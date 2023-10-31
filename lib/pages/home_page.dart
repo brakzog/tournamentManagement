@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:tournament_management/participation_screen.dart';
-import 'package:tournament_management/tournament_screen.dart';
+import 'package:tournament_management/pages/participation_screen.dart';
+import 'package:tournament_management/pages/tournament_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});

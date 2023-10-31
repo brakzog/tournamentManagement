@@ -6,7 +6,10 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:tournament_management/tournament.dart';
+import 'package:tournament_management/models/endTournament.dart';
+import 'package:tournament_management/models/match.dart';
+import 'package:tournament_management/models/poule.dart';
+import 'package:tournament_management/models/tournament.dart';
 
 class TournamentScreen extends StatefulWidget {
   const TournamentScreen({super.key});
@@ -70,6 +73,9 @@ class TournamentsScreenState extends State<TournamentScreen> {
       final List<Object?> participantsList =
           mapValue["participants"] as List<Object?>;
 
+      final List<Poule> pouleList = getPouleList(mapValue);
+      final EndTournament finalMatchList = getListFinalMatch(mapValue);
+
       TournamentDate tournamentDate = getTournamentDate(mapValue);
 
       Tournament tournament = Tournament(
@@ -78,6 +84,8 @@ class TournamentsScreenState extends State<TournamentScreen> {
         sportEvent: "${mapValue["sportEvent"]}",
         tournamentDate: tournamentDate,
         participants: participantsList.cast<String>(),
+        pouleList: pouleList.cast<Poule>(),
+        finalMatchList: finalMatchList,
       );
       // Vérifiez si le tournoi appartient à l'utilisateur actuel (par exemple, par ID d'utilisateur).
       if (tournament.createdBy == FirebaseAuth.instance.currentUser?.email) {
@@ -195,6 +203,81 @@ class TournamentsScreenState extends State<TournamentScreen> {
       tournamentDate.finalDate = "$finalDate";
     }
     return tournamentDate;
+  }
+
+  List<Poule> getPouleList(Map<Object?, Object?> mapValue) {
+    List<Poule> pouleList = [];
+    final Map<Object?, Object?> pouleMap =
+        mapValue['pouleList'] as Map<Object?, Object?>;
+    pouleMap.forEach((key, value) {
+      final String currentName = key as String;
+      Map<Object?, Object?> valueMap = value as Map<Object?, Object?>;
+      pouleList.add(Poule(
+          name: currentName,
+          matchList: getListMatch(valueMap['matchs'] as Map<Object?, Object?>),
+          playerList: getPlayerList(valueMap['players'] as List<Object?>)));
+    });
+
+    return pouleList;
+  }
+
+  List<MatchTournament> getListMatch(Map<Object?, Object?> objectList) {
+    List<MatchTournament> returnList = [];
+    //return matchList.cast<MatchTournament>();
+    objectList.forEach((key, value) {
+      Map<Object?, Object?> subMap = value as Map<Object?, Object?>;
+      MatchTournament currentMatch = MatchTournament(
+        player1: "${subMap['player1']}",
+        player2: "${subMap['player2']}",
+        score: "${subMap['score']}",
+      );
+      returnList.add(currentMatch);
+    });
+    return returnList;
+  }
+
+  List<String> getPlayerList(List<Object?> objectList) {
+    return objectList.cast<String>();
+  }
+
+  EndTournament getListFinalMatch(Map<Object?, Object?> mapValue) {
+    Map<Object?, Object?> finalMap =
+        mapValue['finalMatchList'] as Map<Object?, Object?>;
+    List<MatchTournament> quarterList = getMatchList('quartFinal', finalMap);
+    List<MatchTournament> semiList = getMatchList('semiFinal', finalMap);
+    MatchTournament smallFinall = getFinalMatch('smallFinal', finalMap);
+    MatchTournament finale = getFinalMatch('final', finalMap);
+    return EndTournament(
+        finalMatch: finale,
+        smallFinalMatch: smallFinall,
+        semiFinalist: semiList,
+        quarterFinalList: quarterList);
+  }
+
+  List<MatchTournament> getMatchList(
+      String key, Map<Object?, Object?> mapValue) {
+    Map<Object?, Object?> objectMap = mapValue[key] as Map<Object?, Object?>;
+    // List<Object?> objectList = objectMap.values as List<Object?>;
+    List<MatchTournament> matchList = [];
+    objectMap.forEach((key, value) {
+      Map<Object?, Object?> valueMap = value as Map<Object?, Object?>;
+      MatchTournament? currentMatch = MatchTournament(
+        player1: "${valueMap['player1']}",
+        player2: "${valueMap['player2']}",
+        score: "${valueMap['score']}",
+      );
+      matchList.add(currentMatch);
+    });
+    return matchList;
+  }
+
+  MatchTournament getFinalMatch(String key, Map<Object?, Object?> mapValue) {
+    Map<Object?, Object?> objectMap = mapValue[key] as Map<Object?, Object?>;
+    return MatchTournament(
+      player1: "${objectMap['player1']}",
+      player2: "${objectMap['player2']}",
+      score: "${objectMap['score']}",
+    );
   }
 
   @override

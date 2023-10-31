@@ -1,11 +1,15 @@
+import 'package:tournament_management/models/endTournament.dart';
+import 'package:tournament_management/models/match.dart';
+import 'package:tournament_management/models/poule.dart';
+
 class Tournament {
   final String name;
   final String sportEvent; //Type d'epreuve
-  /*final List<String> wantedDates; // Liste de dates proposées
-  final String dateBegun; */ // Date de commencement choisie
   final TournamentDate tournamentDate;
   final String createdBy;
   final List<String> participants;
+  final List<Poule> pouleList;
+  EndTournament finalMatchList; //1/4, 1/2, final
 
   Tournament({
     required this.createdBy,
@@ -13,6 +17,8 @@ class Tournament {
     required this.sportEvent,
     required this.tournamentDate,
     required this.participants,
+    required this.pouleList,
+    required this.finalMatchList,
   });
 
   // Méthode pour convertir un objet Map en instance de Tournament.
@@ -23,6 +29,8 @@ class Tournament {
       createdBy: map['createdBy'],
       tournamentDate: map['tournamentDate'],
       participants: map['participants'],
+      pouleList: map['pouleList'],
+      finalMatchList: map['finalMatchList'],
     );
   }
 
