@@ -1,4 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:tournament_management/pages/create_tournament_page.dart';
+import 'package:tournament_management/pages/login_page.dart';
 import 'package:tournament_management/pages/participation_screen.dart';
 import 'package:tournament_management/pages/tournament_screen.dart';
 
@@ -16,6 +20,7 @@ class HomePageState extends State<HomePage> {
   final List<Widget> _tabs = [
     const TournamentScreen(),
     const ParticipationScreen(),
+    const LoginPage(),
   ];
 
   @override
@@ -28,10 +33,15 @@ class HomePageState extends State<HomePage> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex, // L'onglet actuellement sélectionné.
         onTap: (int index) {
-          setState(() {
-            _currentIndex =
-                index; // Met à jour l'onglet actuellement sélectionné.
-          });
+          if (index == 2) {
+            // logout action
+            logoutUser();
+          } else {
+            setState(() {
+              _currentIndex =
+                  index; // Met à jour l'onglet actuellement sélectionné.
+            });
+          }
         },
         items: const [
           BottomNavigationBarItem(
@@ -42,7 +52,41 @@ class HomePageState extends State<HomePage> {
             icon: Icon(Icons.people), // Icône pour "Participations".
             label: "Participations",
           ),
+          BottomNavigationBarItem(
+            icon: Icon(
+              Icons.logout,
+            ),
+            label: "Se déconnecter",
+          ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Action à effectuer lors du clic sur le bouton flottant.
+          // Par exemple, naviguer vers la page de création de tournoi.
+          Navigator.push(
+            context,
+            AnimatedCreateTournamentPageRoute(
+                page: const CreateTournamentPage()),
+          );
+        },
+        child: const Icon(Icons.add),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+    );
+  }
+
+  void logoutUser() async {
+    /*final userId = await const FlutterSecureStorage().read(key: "userId");
+    final credentialState = await TheAppleSignIn.getCredentialState(userId!);*/
+    FirebaseAuth.instance.signOut();
+    const FlutterSecureStorage().delete(key: "userId");
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) {
+          // Retournez la page de destination (par exemple, HomePage)
+          return const LoginPage();
+        },
       ),
     );
   }

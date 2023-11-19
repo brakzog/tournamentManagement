@@ -1,5 +1,4 @@
-import 'package:tournament_management/models/endTournament.dart';
-import 'package:tournament_management/models/match.dart';
+import 'package:tournament_management/models/end_tournament.dart';
 import 'package:tournament_management/models/poule.dart';
 
 class Tournament {

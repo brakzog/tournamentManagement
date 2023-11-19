@@ -18,7 +18,9 @@ dependencies:
   google_sign_in_android: ^6.1.20
   google_sign_in_ios: ^5.6.4
   the_apple_sign_in: ^1.1.1
-  intl: ^0.18.1
+  intl: ^0.17.0
+  flutter_datetime_picker: ^1.5.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
