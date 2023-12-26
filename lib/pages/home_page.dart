@@ -77,8 +77,6 @@ class HomePageState extends State<HomePage> {
   }
 
   void logoutUser() async {
-    /*final userId = await const FlutterSecureStorage().read(key: "userId");
-    final credentialState = await TheAppleSignIn.getCredentialState(userId!);*/
     FirebaseAuth.instance.signOut();
     const FlutterSecureStorage().delete(key: "userId");
     Navigator.of(context).pushReplacement(

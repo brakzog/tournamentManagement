@@ -179,19 +179,25 @@ class TournamentsScreenState extends State<TournamentScreen> {
 
   TournamentDate getTournamentDate(Map<Object?, Object?> mapValue) {
     final dateMap = mapValue["tournamentDate"] as Map<Object?, Object?>;
-    final suggestionDates = dateMap["suggestionDate"] as List<Object?>;
-    final pouleDates = dateMap["pouleListDate"] as List<Object?>?;
+
+    final suggestionDates = dateMap["suggestionDate"] != null
+        ? dateMap["suggestionDate"] as List<Object?>
+        : null;
+    final pouleDates = dateMap["pouleListDate"] as Map<Object?, Object?>?;
     final quarterDates = dateMap["quarterListDate"] as List<Object?>?;
     final semiDates = dateMap["semiListDate"] as List<Object?>?;
     final finalDate = dateMap["finalDate"];
 
     TournamentDate tournamentDate = TournamentDate(
       beginingDate: "${dateMap["beginingDate"]}",
-      suggestionDate: suggestionDates.cast<String>(),
+      suggestionDate:
+          suggestionDates != null ? suggestionDates.cast<String>() : [],
       expirationDate: " ${dateMap["expirationDate"]}",
     );
     if (pouleDates != null) {
-      tournamentDate.pouleListDate = pouleDates.cast<String>();
+      pouleDates.forEach((key, value) {
+        tournamentDate.pouleListDate?.add("$value");
+      });
     }
     if (quarterDates != null) {
       tournamentDate.quarterListDate = quarterDates.cast<String>();
@@ -214,17 +220,16 @@ class TournamentsScreenState extends State<TournamentScreen> {
       Map<Object?, Object?> valueMap = value as Map<Object?, Object?>;
       pouleList.add(Poule(
           name: currentName,
-          matchList: getListMatch(valueMap['matchs'] as Map<Object?, Object?>),
+          matchList: getListMatch(valueMap['matchs'] as List<Object?>),
           playerList: getPlayerList(valueMap['players'] as List<Object?>)));
     });
 
     return pouleList;
   }
 
-  List<MatchTournament> getListMatch(Map<Object?, Object?> objectList) {
+  List<MatchTournament> getListMatch(List<Object?> objectList) {
     List<MatchTournament> returnList = [];
-    //return matchList.cast<MatchTournament>();
-    objectList.forEach((key, value) {
+    for (var value in objectList) {
       Map<Object?, Object?> subMap = value as Map<Object?, Object?>;
       MatchTournament currentMatch = MatchTournament(
         player1: "${subMap['player1']}",
@@ -232,7 +237,7 @@ class TournamentsScreenState extends State<TournamentScreen> {
         score: "${subMap['score']}",
       );
       returnList.add(currentMatch);
-    });
+    }
     return returnList;
   }
 
@@ -241,12 +246,11 @@ class TournamentsScreenState extends State<TournamentScreen> {
   }
 
   EndTournament getListFinalMatch(Map<Object?, Object?> mapValue) {
-    Map<Object?, Object?> finalMap =
-        mapValue['finalMatchList'] as Map<Object?, Object?>;
-    List<MatchTournament> quarterList = getMatchList('quartFinal', finalMap);
-    List<MatchTournament> semiList = getMatchList('semiFinal', finalMap);
-    MatchTournament smallFinall = getFinalMatch('smallFinal', finalMap);
-    MatchTournament finale = getFinalMatch('final', finalMap);
+    //Map<Object?, Object?> finalMap = mapValue['final'] as Map<Object?, Object?>;
+    List<MatchTournament> quarterList = getMatchList('quartFinal', mapValue);
+    List<MatchTournament> semiList = getMatchList('semiFinal', mapValue);
+    MatchTournament smallFinall = getFinalMatch('smallFinal', mapValue);
+    MatchTournament finale = getFinalMatch('final', mapValue);
     return EndTournament(
         finalMatch: finale,
         smallFinalMatch: smallFinall,
@@ -260,13 +264,16 @@ class TournamentsScreenState extends State<TournamentScreen> {
     // List<Object?> objectList = objectMap.values as List<Object?>;
     List<MatchTournament> matchList = [];
     objectMap.forEach((key, value) {
-      Map<Object?, Object?> valueMap = value as Map<Object?, Object?>;
-      MatchTournament? currentMatch = MatchTournament(
-        player1: "${valueMap['player1']}",
-        player2: "${valueMap['player2']}",
-        score: "${valueMap['score']}",
-      );
-      matchList.add(currentMatch);
+      List<Object?> valueList = value as List<Object?>;
+      for (var element in valueList) {
+        Map<Object?, Object?> valueMap = element as Map<Object?, Object?>;
+        MatchTournament? currentMatch = MatchTournament(
+          player1: "${valueMap['player1']}",
+          player2: "${valueMap['player2']}",
+          score: "${valueMap['score']}",
+        );
+        matchList.add(currentMatch);
+      }
     });
     return matchList;
   }
