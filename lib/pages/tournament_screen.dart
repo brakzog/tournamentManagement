@@ -10,6 +10,7 @@ import 'package:tournament_management/models/end_tournament.dart';
 import 'package:tournament_management/models/match.dart';
 import 'package:tournament_management/models/poule.dart';
 import 'package:tournament_management/models/tournament.dart';
+import 'package:tournament_management/pages/detail_tournament_page.dart';
 
 class TournamentScreen extends StatefulWidget {
   const TournamentScreen({super.key});
@@ -335,7 +336,7 @@ class TournamentsScreenState extends State<TournamentScreen> {
     if (tournamentCategories[index].isNotEmpty) {
       return ExpansionTile(
         title: Text(categoryTitles[index]),
-        children: retrieveListWidget(tournamentCategories[index]),
+        children: retrieveListTournament(tournamentCategories[index]),
       );
     } else {
       return ListTile(
@@ -344,14 +345,25 @@ class TournamentsScreenState extends State<TournamentScreen> {
     }
   }
 
-  List<Widget> retrieveListWidget(List<Tournament> tournamentList) {
+  List<Widget> retrieveListTournament(List<Tournament> tournamentList) {
     List<Widget> listWidget = [];
-    // ignore: avoid_function_literals_in_foreach_calls
-    tournamentList.forEach((element) {
+    for (var element in tournamentList) {
       listWidget.add(Column(
-        children: [Text(element.name), Text(element.createdBy)],
+        children: [
+          InkWell(
+            child: Text(element.name),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => DetailTournamentPage(
+                  tournament: element,
+                ),
+              ),
+            ),
+          ),
+        ],
       ));
-    });
+    }
 
     return listWidget;
   }

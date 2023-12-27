@@ -67,7 +67,8 @@ class HomePageState extends State<HomePage> {
           Navigator.push(
             context,
             AnimatedCreateTournamentPageRoute(
-                page: const CreateTournamentPage()),
+              page: const CreateTournamentPage(),
+            ),
           );
         },
         child: const Icon(Icons.add),
