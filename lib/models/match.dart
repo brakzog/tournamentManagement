@@ -16,4 +16,13 @@ class MatchTournament {
       score: map['score'],
     );
   }
+
+// Méthode toJson dans la classe Match
+  Map<String, dynamic> toJson() {
+    return {
+      'player1': player1,
+      'player2': player2,
+      'score': score,
+    };
+  }
 }

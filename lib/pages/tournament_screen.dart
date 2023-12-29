@@ -336,7 +336,10 @@ class TournamentsScreenState extends State<TournamentScreen> {
     if (tournamentCategories[index].isNotEmpty) {
       return ExpansionTile(
         title: Text(categoryTitles[index]),
-        children: retrieveListTournament(tournamentCategories[index]),
+        children: retrieveListTournament(
+          tournamentCategories[index],
+          index == 0,
+        ),
       );
     } else {
       return ListTile(
@@ -345,7 +348,8 @@ class TournamentsScreenState extends State<TournamentScreen> {
     }
   }
 
-  List<Widget> retrieveListTournament(List<Tournament> tournamentList) {
+  List<Widget> retrieveListTournament(
+      List<Tournament> tournamentList, bool inProgress) {
     List<Widget> listWidget = [];
     for (var element in tournamentList) {
       listWidget.add(Column(
@@ -357,6 +361,7 @@ class TournamentsScreenState extends State<TournamentScreen> {
               MaterialPageRoute(
                 builder: (_) => DetailTournamentPage(
                   tournament: element,
+                  inProgress: inProgress,
                 ),
               ),
             ),

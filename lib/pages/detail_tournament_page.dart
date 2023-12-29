@@ -1,3 +1,4 @@
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:graphview/GraphView.dart';
@@ -9,8 +10,13 @@ import 'package:tournament_management/models/tournament.dart';
 class DetailTournamentPage extends StatefulWidget {
   // Vous pouvez passer les données du tournoi ici depuis l'écran précédent
   final Tournament tournament;
+  final bool inProgress;
 
-  const DetailTournamentPage({super.key, required this.tournament});
+  const DetailTournamentPage({
+    super.key,
+    required this.tournament,
+    required this.inProgress,
+  });
 
   @override
   // ignore: library_private_types_in_public_api
@@ -22,6 +28,10 @@ class _DetailTournamentScreenState extends State<DetailTournamentPage>
   // Définissez un contrôleur pour le TabController
   late TabController _tabController;
   String _selectedPoule = 'A'; // Gardera la valeur de la poule sélectionnée
+
+  // Get reference to tournament table from firebase
+  DatabaseReference tournamentRef =
+      FirebaseDatabase.instance.ref().child("tournois");
 
   Widget rectangleWidget(String a) {
     return InkWell(
@@ -104,12 +114,39 @@ class _DetailTournamentScreenState extends State<DetailTournamentPage>
     );
   }
 
+  String getWinner(MatchTournament match) {
+    // Diviser la chaîne de score en une liste de sets
+    List<String> sets = match.score.split(';');
+
+    int player1Wins = 0;
+    int player2Wins = 0;
+
+    // Parcourir chaque set et compter les victoires pour chaque joueur
+    for (String set in sets) {
+      List<String> scores = set.split('-');
+      int player1Score = int.parse(scores[0]);
+      int player2Score = int.parse(scores[1]);
+
+      if (player1Score > player2Score) {
+        player1Wins++;
+      } else if (player2Score > player1Score) {
+        player2Wins++;
+      }
+    }
+
+    // Déterminer le joueur gagnant en comparant le nombre total de victoires
+    if (player1Wins > player2Wins) {
+      return match.player1;
+    } else {
+      return match.player2;
+    }
+  }
+
   Graph createTournamentTree(EndTournament endTournament) {
     final Graph graph = Graph()..isTree = true;
 
-    //TODO need to calculate it
     final TournamentNode winnerNode =
-        TournamentNode(0, "Winner: ${endTournament.finalMatch.player1}");
+        TournamentNode(0, "Winner: ${getWinner(endTournament.finalMatch)}");
 
     final TournamentNode finalPlayer1Node =
         TournamentNode(1, endTournament.finalMatch.player1);
@@ -159,27 +196,6 @@ class _DetailTournamentScreenState extends State<DetailTournamentPage>
     graph.addEdge(semiPlayer3Node, quarterPlayer6Node);
     graph.addEdge(semiPlayer4Node, quarterPlayer7Node);
     graph.addEdge(semiPlayer4Node, quarterPlayer8Node);
-
-    /*graph.addEdge(winnerNode, rootNode);
-    graph.addEdge(rootNode, semiFinal1Node);
-    graph.addEdge(rootNode, semiFinal2Node);
-    graph.addEdge(semiFinal1Node, quarterFinal1Node);
-    graph.addEdge(semiFinal1Node, quarterFinal2Node);
-    graph.addEdge(semiFinal2Node, quarterFinal3Node);
-    graph.addEdge(semiFinal2Node, quarterFinal4Node);
-
-    graph.addEdge(quarterFinal1Node, quarterPlayer1Node);
-    graph.addEdge(quarterFinal1Node, quarterPlayer2Node);
-
-    graph.addEdge(quarterFinal2Node, quarterPlayer3Node);
-    graph.addEdge(quarterFinal2Node, quarterPlayer4Node);
-
-    graph.addEdge(quarterFinal3Node, quarterPlayer5Node);
-    graph.addEdge(quarterFinal3Node, quarterPlayer6Node);
-
-    graph.addEdge(quarterFinal4Node, quarterPlayer7Node);
-    graph.addEdge(quarterFinal4Node, quarterPlayer8Node);*/
-
     return graph;
   }
 
@@ -206,9 +222,191 @@ class _DetailTournamentScreenState extends State<DetailTournamentPage>
           _buildRanking(widget.tournament.pouleList
               .where((element) => element.name == _selectedPoule)
               .first),
+          const SizedBox(
+            height: 50,
+          ),
+          if (widget.inProgress)
+            ElevatedButton(
+                child: const Text("Saisir des résultats"),
+                onPressed: () => showMatchResultDialog(
+                      context,
+                      widget.tournament,
+                      tournamentRef,
+                    )),
         ],
       ],
     );
+  }
+
+  void showMatchResultDialog(BuildContext context, Tournament tournament,
+      DatabaseReference tournamentRef) {
+    Poule currentPoule = (tournament.pouleList
+        .where((element) => element.name == _selectedPoule)).first;
+
+    // Variables pour stocker les sélections des joueurs
+    String selectedPlayer1 = currentPoule.playerList.first;
+    String selectedPlayer2 = currentPoule.playerList.last;
+
+    // Contrôleur pour le champ de texte
+    TextEditingController scoreController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Saisi des résultats de match'),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Dropdown pour le joueur 1
+              DropdownButton<String>(
+                value: currentPoule.playerList.first,
+                hint: const Text('Sélectionnez le joueur 1'),
+                onChanged: (String? value) {
+                  selectedPlayer1 = value!;
+                  Navigator.of(context).pop();
+                  showMatchResultDialog(
+                    context,
+                    tournament,
+                    tournamentRef,
+                  );
+                },
+                items: currentPoule.playerList
+                    .map<DropdownMenuItem<String>>((String player) {
+                  return DropdownMenuItem<String>(
+                    value: player,
+                    child: Text(player),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 10),
+
+              // Dropdown pour le joueur 2
+              DropdownButton<String>(
+                value: currentPoule.playerList.last,
+                hint: const Text('Sélectionnez le joueur 2'),
+                onChanged: (String? value) {
+                  selectedPlayer2 = value!;
+                  Navigator.of(context).pop();
+                  showMatchResultDialog(
+                    context,
+                    tournament,
+                    tournamentRef,
+                  );
+                },
+                items: currentPoule.playerList
+                    .map<DropdownMenuItem<String>>((String player) {
+                  return DropdownMenuItem<String>(
+                    value: player,
+                    child: Text(player),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 10),
+
+              // Champ de texte pour le score
+              TextField(
+                controller: scoreController,
+                decoration: const InputDecoration(labelText: 'Entrez le score'),
+              ),
+            ],
+          ),
+          actions: [
+            // Bouton valider
+            InkWell(
+              onTap: () async {
+                // Traitez les résultats ici
+                DatabaseReference test = tournamentRef
+                    .child(tournament.name)
+                    .child('pouleList')
+                    .child(_selectedPoule);
+
+                bool matchExists = await checkMatchExists(
+                    selectedPlayer1, selectedPlayer2, test);
+                if (matchExists) {
+                  // ignore: use_build_context_synchronously
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: const Text('Erreur'),
+                        content: Text(
+                            'Le match entre $selectedPlayer1 et $selectedPlayer2 a déjà été joué.'),
+                        actions: [
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                            child: const Text('OK'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                } else {
+                  if (isValidScoreFormat(scoreController.text)) {
+                    // Le format du score est valide, ajoutez le nouveau match à la liste des matchs dans Firebase
+                    MatchTournament newMatch = MatchTournament(
+                      player1: selectedPlayer1!,
+                      player2: selectedPlayer2!,
+                      score: scoreController.text,
+                    );
+
+                    test.child('matchs').push().set(newMatch.toJson());
+                    // ignore: use_build_context_synchronously
+                    Navigator.of(context).pop();
+                  } else {
+                    // ignore: use_build_context_synchronously
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: const Text('Erreur'),
+                          content: const Text(
+                              'Le format du score est incorrect. Utilisez le format Xi-Yi;Xi+1-Yi+1;...'),
+                          actions: [
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                              },
+                              child: const Text('OK'),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  }
+                }
+              },
+              child: const Text('Valider'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Méthode pour vérifier si un match existe déjà
+  Future<bool> checkMatchExists(String player1, String player2,
+      DatabaseReference databaseReference) async {
+    DataSnapshot snapshot =
+        (await databaseReference.child('matchs').once()).snapshot;
+    List<Object?> matches = snapshot.value as List<Object?>;
+
+    // Parcourir les matchs pour vérifier si le match existe déjà
+    for (var match in matches) {
+      Map currentMatch = match as Map<Object?, Object?>;
+      if (currentMatch['player1'] == player1 &&
+          currentMatch['player2'] == player2) {
+        return true;
+      } else if (currentMatch['player1'] == player2 &&
+          currentMatch['player2'] == player1) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   Widget _buildPouleSelector() {
