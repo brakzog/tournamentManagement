@@ -213,6 +213,9 @@ class TournamentsScreenState extends State<TournamentScreen> {
   }
 
   List<Poule> getPouleList(Map<Object?, Object?> mapValue) {
+    if (mapValue['pouleList'] == null) {
+      return [];
+    }
     List<Poule> pouleList = [];
     final Map<Object?, Object?> pouleMap =
         mapValue['pouleList'] as Map<Object?, Object?>;
@@ -261,6 +264,10 @@ class TournamentsScreenState extends State<TournamentScreen> {
 
   List<MatchTournament> getMatchList(
       String key, Map<Object?, Object?> mapValue) {
+    if (mapValue[key] == null) {
+      return [];
+    }
+
     Map<Object?, Object?> objectMap = mapValue[key] as Map<Object?, Object?>;
     // List<Object?> objectList = objectMap.values as List<Object?>;
     List<MatchTournament> matchList = [];
@@ -280,6 +287,9 @@ class TournamentsScreenState extends State<TournamentScreen> {
   }
 
   MatchTournament getFinalMatch(String key, Map<Object?, Object?> mapValue) {
+    if (mapValue[key] == null) {
+      return MatchTournament(player1: "", player2: "", score: "");
+    }
     Map<Object?, Object?> objectMap = mapValue[key] as Map<Object?, Object?>;
     return MatchTournament(
       player1: "${objectMap['player1']}",
@@ -350,26 +360,31 @@ class TournamentsScreenState extends State<TournamentScreen> {
 
   List<Widget> retrieveListTournament(
       List<Tournament> tournamentList, bool inProgress) {
-    List<Widget> listWidget = [];
-    for (var element in tournamentList) {
-      listWidget.add(Column(
-        children: [
-          InkWell(
-            child: Text(element.name),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => DetailTournamentPage(
-                  tournament: element,
-                  inProgress: inProgress,
-                ),
-              ),
+    return List.generate(tournamentList.length, (index) {
+      return InkWell(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DetailTournamentPage(
+              tournament: tournamentList[index],
+              inProgress: inProgress,
             ),
           ),
-        ],
-      ));
-    }
-
-    return listWidget;
+        ),
+        child: Container(
+          margin: const EdgeInsets.symmetric(
+              vertical: 8.0), // Ajustez la marge verticale selon vos besoins
+          padding: const EdgeInsets.all(12.0),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey),
+            borderRadius: BorderRadius.circular(8.0),
+          ),
+          child: Text(
+            tournamentList[index].name,
+            style: const TextStyle(fontSize: 16.0),
+          ),
+        ),
+      );
+    });
   }
 }

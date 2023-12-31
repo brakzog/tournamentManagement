@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -6,9 +8,10 @@ import 'package:tournament_management/models/end_tournament.dart';
 import 'package:tournament_management/models/match.dart';
 import 'package:tournament_management/models/poule.dart';
 import 'package:tournament_management/models/tournament.dart';
+import 'package:tournament_management/utils.dart';
+import 'package:tournament_management/widgets/tournament_node.dart';
 
 class DetailTournamentPage extends StatefulWidget {
-  // Vous pouvez passer les données du tournoi ici depuis l'écran précédent
   final Tournament tournament;
   final bool inProgress;
 
@@ -25,9 +28,10 @@ class DetailTournamentPage extends StatefulWidget {
 
 class _DetailTournamentScreenState extends State<DetailTournamentPage>
     with TickerProviderStateMixin {
-  // Définissez un contrôleur pour le TabController
   late TabController _tabController;
-  String _selectedPoule = 'A'; // Gardera la valeur de la poule sélectionnée
+  String _selectedPoule = 'A'; // valeur de la poule sélectionnée
+
+  BuchheimWalkerConfiguration builder = BuchheimWalkerConfiguration();
 
   // Get reference to tournament table from firebase
   DatabaseReference tournamentRef =
@@ -64,8 +68,6 @@ class _DetailTournamentScreenState extends State<DetailTournamentPage>
       ..orientation = (BuchheimWalkerConfiguration.ORIENTATION_RIGHT_LEFT);
   }
 
-  BuchheimWalkerConfiguration builder = BuchheimWalkerConfiguration();
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -75,7 +77,7 @@ class _DetailTournamentScreenState extends State<DetailTournamentPage>
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
-            Tab(text: "Matchs de Poule"),
+            Tab(text: "Phase de Poule"),
             Tab(text: "Arbre de Déroulement"),
           ],
         ),
@@ -99,8 +101,6 @@ class _DetailTournamentScreenState extends State<DetailTournamentPage>
                   builder: (node) =>
                       rectangleWidget((node as TournamentNode).label),
                   graph: createTournamentTree(widget.tournament.finalMatchList),
-                  /* algorithm: BuchheimWalkerAlgorithm(TournamentNode.builder,
-                    TreeEdgeRenderer(TournamentNode.builder)),*/
                   algorithm: BuchheimWalkerAlgorithm(
                     builder,
                     TreeEdgeRenderer(builder),
@@ -114,31 +114,34 @@ class _DetailTournamentScreenState extends State<DetailTournamentPage>
     );
   }
 
-  String getWinner(MatchTournament match) {
-    // Diviser la chaîne de score en une liste de sets
-    List<String> sets = match.score.split(';');
-
-    int player1Wins = 0;
-    int player2Wins = 0;
-
-    // Parcourir chaque set et compter les victoires pour chaque joueur
-    for (String set in sets) {
-      List<String> scores = set.split('-');
-      int player1Score = int.parse(scores[0]);
-      int player2Score = int.parse(scores[1]);
-
-      if (player1Score > player2Score) {
-        player1Wins++;
-      } else if (player2Score > player1Score) {
-        player2Wins++;
-      }
-    }
-
-    // Déterminer le joueur gagnant en comparant le nombre total de victoires
-    if (player1Wins > player2Wins) {
-      return match.player1;
-    } else {
-      return match.player2;
+  TournamentNode getTournamentNode(
+    int id,
+    EndTournament endTournament,
+    int index,
+    TournamentPhase phase,
+    bool player1,
+  ) {
+    switch (phase) {
+      case TournamentPhase.quart:
+        if (endTournament.quarterFinalList.isEmpty) {
+          return TournamentNode(id, "<player $index>");
+        }
+        if (player1) {
+          return TournamentNode(
+              id, endTournament.quarterFinalList[index].player1);
+        } else {
+          return TournamentNode(
+              id, endTournament.quarterFinalList[index].player2);
+        }
+      case TournamentPhase.semi:
+        if (endTournament.semiFinalist.isEmpty) {
+          return TournamentNode(id, "<player $index>");
+        }
+        if (player1) {
+          return TournamentNode(id, endTournament.semiFinalist[index].player1);
+        } else {
+          return TournamentNode(id, endTournament.semiFinalist[index].player2);
+        }
     }
   }
 
@@ -155,30 +158,42 @@ class _DetailTournamentScreenState extends State<DetailTournamentPage>
         TournamentNode(2, endTournament.finalMatch.player2);
 
     final TournamentNode semiPlayer1Node =
-        TournamentNode(3, endTournament.semiFinalist[0].player1);
+        getTournamentNode(3, endTournament, 0, TournamentPhase.semi, true);
+    //    TournamentNode(3, endTournament.semiFinalist[0].player1);
     final TournamentNode semiPlayer2Node =
-        TournamentNode(4, endTournament.semiFinalist[0].player2);
+        getTournamentNode(4, endTournament, 0, TournamentPhase.semi, false);
+    //     TournamentNode(4, endTournament.semiFinalist[0].player2);
     final TournamentNode semiPlayer3Node =
-        TournamentNode(5, endTournament.semiFinalist[1].player1);
+        getTournamentNode(5, endTournament, 1, TournamentPhase.semi, true);
+    //     TournamentNode(5, endTournament.semiFinalist[1].player1);
     final TournamentNode semiPlayer4Node =
-        TournamentNode(6, endTournament.semiFinalist[1].player2);
+        getTournamentNode(6, endTournament, 1, TournamentPhase.semi, false);
+    //   TournamentNode(6, endTournament.semiFinalist[1].player2);
 
     final TournamentNode quarterPlayer1Node =
-        TournamentNode(7, endTournament.quarterFinalList[0].player1);
+        getTournamentNode(7, endTournament, 0, TournamentPhase.quart, true);
+    //   TournamentNode(7, endTournament.quarterFinalList[0].player1);
     final TournamentNode quarterPlayer2Node =
-        TournamentNode(8, endTournament.quarterFinalList[0].player2);
+        getTournamentNode(8, endTournament, 0, TournamentPhase.quart, false);
+    //    TournamentNode(8, endTournament.quarterFinalList[0].player2);
     final TournamentNode quarterPlayer3Node =
-        TournamentNode(9, endTournament.quarterFinalList[1].player1);
+        getTournamentNode(9, endTournament, 1, TournamentPhase.quart, true);
+    //    TournamentNode(9, endTournament.quarterFinalList[1].player1);
     final TournamentNode quarterPlayer4Node =
-        TournamentNode(10, endTournament.quarterFinalList[1].player2);
+        getTournamentNode(10, endTournament, 1, TournamentPhase.quart, false);
+    //     TournamentNode(10, endTournament.quarterFinalList[1].player2);
     final TournamentNode quarterPlayer5Node =
-        TournamentNode(11, endTournament.quarterFinalList[2].player1);
+        getTournamentNode(11, endTournament, 2, TournamentPhase.quart, true);
+    //     TournamentNode(11, endTournament.quarterFinalList[2].player1);
     final TournamentNode quarterPlayer6Node =
-        TournamentNode(12, endTournament.quarterFinalList[2].player2);
+        getTournamentNode(12, endTournament, 2, TournamentPhase.quart, false);
+    //     TournamentNode(12, endTournament.quarterFinalList[2].player2);
     final TournamentNode quarterPlayer7Node =
-        TournamentNode(13, endTournament.quarterFinalList[3].player1);
+        getTournamentNode(13, endTournament, 3, TournamentPhase.quart, true);
+    //    TournamentNode(13, endTournament.quarterFinalList[3].player1);
     final TournamentNode quarterPlayer8Node =
-        TournamentNode(14, endTournament.quarterFinalList[3].player2);
+        getTournamentNode(14, endTournament, 3, TournamentPhase.quart, false);
+    //    TournamentNode(14, endTournament.quarterFinalList[3].player2);
 
     graph.addEdge(winnerNode, finalPlayer1Node);
     graph.addEdge(winnerNode, finalPlayer2Node);
@@ -201,6 +216,9 @@ class _DetailTournamentScreenState extends State<DetailTournamentPage>
 
   List<MatchTournament> getMatchListFromPoule() {
     List<Poule> pouleList = widget.tournament.pouleList;
+    if (pouleList.isEmpty) {
+      return [];
+    }
     Poule findPoule =
         pouleList.where((element) => element.name == _selectedPoule).first;
 
@@ -210,22 +228,35 @@ class _DetailTournamentScreenState extends State<DetailTournamentPage>
   Widget _buildPoolMatchesPage() {
     // Récupérer les matchs de poule depuis les données du tournoi
     final List<MatchTournament> matchList = getMatchListFromPoule();
-
+    final bool isEmpty = widget.tournament.pouleList.isEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildPouleSelector(),
+        if (isEmpty)
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                //  widget.tournament.pouleList.addAll(widget.tournament.participants);
+                widget.tournament.pouleList
+                    .addAll(generatePools(widget.tournament.participants));
+              });
+            },
+            child: const Text("Démarrer le tournoi"),
+          ),
+        if (isEmpty) _buildParticipantList(),
+        if (!isEmpty) _buildPouleSelector(),
+        if (!isEmpty)
+          _buildRanking(widget.tournament.pouleList
+              .where((element) => element.name == _selectedPoule)
+              .first),
         const SizedBox(height: 16.0),
         ...[
           _buildMatches(matchList),
           const SizedBox(height: 16.0),
-          _buildRanking(widget.tournament.pouleList
-              .where((element) => element.name == _selectedPoule)
-              .first),
           const SizedBox(
             height: 50,
           ),
-          if (widget.inProgress)
+          if (widget.inProgress && widget.tournament.pouleList.isNotEmpty)
             ElevatedButton(
                 child: const Text("Saisir des résultats"),
                 onPressed: () => showMatchResultDialog(
@@ -317,13 +348,13 @@ class _DetailTournamentScreenState extends State<DetailTournamentPage>
             InkWell(
               onTap: () async {
                 // Traitez les résultats ici
-                DatabaseReference test = tournamentRef
+                DatabaseReference selectedPouleRef = tournamentRef
                     .child(tournament.name)
                     .child('pouleList')
                     .child(_selectedPoule);
 
                 bool matchExists = await checkMatchExists(
-                    selectedPlayer1, selectedPlayer2, test);
+                    selectedPlayer1, selectedPlayer2, selectedPouleRef);
                 if (matchExists) {
                   // ignore: use_build_context_synchronously
                   showDialog(
@@ -348,12 +379,15 @@ class _DetailTournamentScreenState extends State<DetailTournamentPage>
                   if (isValidScoreFormat(scoreController.text)) {
                     // Le format du score est valide, ajoutez le nouveau match à la liste des matchs dans Firebase
                     MatchTournament newMatch = MatchTournament(
-                      player1: selectedPlayer1!,
-                      player2: selectedPlayer2!,
+                      player1: selectedPlayer1,
+                      player2: selectedPlayer2,
                       score: scoreController.text,
                     );
 
-                    test.child('matchs').push().set(newMatch.toJson());
+                    selectedPouleRef
+                        .child('matchs')
+                        .push()
+                        .set(newMatch.toJson());
                     // ignore: use_build_context_synchronously
                     Navigator.of(context).pop();
                   } else {
@@ -387,6 +421,14 @@ class _DetailTournamentScreenState extends State<DetailTournamentPage>
     );
   }
 
+// Fonction pour vérifier le format du score
+  bool isValidScoreFormat(String score) {
+    // Utilisez une expression régulière pour vérifier le format du score
+    // Ici, nous utilisons une expression régulière simple pour le format Xi-Yi;Xi+1-Yi+1;...
+    RegExp regex = RegExp(r'^(\d+-\d+;)+$');
+    return regex.hasMatch(score);
+  }
+
   // Méthode pour vérifier si un match existe déjà
   Future<bool> checkMatchExists(String player1, String player2,
       DatabaseReference databaseReference) async {
@@ -410,13 +452,16 @@ class _DetailTournamentScreenState extends State<DetailTournamentPage>
   }
 
   Widget _buildPouleSelector() {
+    List<Poule> sortedPoules = List.from(widget.tournament.pouleList);
+    sortedPoules.sort((a, b) => a.name.compareTo(b.name));
+
     return Row(
       children: [
         const Text("Choix de la poule"),
         const SizedBox(width: 8.0),
         DropdownButton<String>(
           value: _selectedPoule,
-          items: widget.tournament.pouleList.map((poule) {
+          items: sortedPoules.map((poule) {
             return DropdownMenuItem<String>(
               value: poule.name,
               child: Text(poule.name),
@@ -459,85 +504,78 @@ class _DetailTournamentScreenState extends State<DetailTournamentPage>
     );
   }
 
-  List<String> calculateRanking(Poule poule) {
-    // Initialiser un map pour stocker le nombre de victoires de chaque joueur
-    Map<String, int> victories = {};
+  List<MatchTournament> generateMatches(List<String> userList) {
+    // Implémentez la logique pour générer les matchs (par exemple, round-robin, etc.)
+    // Cette implémentation dépendra de la logique spécifique de votre application
+    // Je vais vous donner un exemple simple pour la démonstration
 
-    // Parcourir la liste des matchs de la poule
-    for (MatchTournament match in poule.matchList) {
-      // Découper le score pour obtenir les différents sets
-      List<String> sets = match.score.split(';');
-
-      // Compter le nombre de sets gagnés par chaque joueur
-      int victoriesPlayer1 = 0;
-      int victoriesPlayer2 = 0;
-
-      for (String set in sets) {
-        List<String> scores = set.split('-');
-        if (scores.length == 2) {
-          if (int.parse(scores[0]) > int.parse(scores[1])) {
-            victoriesPlayer1++;
-          } else if (int.parse(scores[1]) > int.parse(scores[0])) {
-            victoriesPlayer2++;
-          }
-        }
+    List<MatchTournament> matches = [];
+    for (int i = 0; i < userList.length - 1; i++) {
+      for (int j = i + 1; j < userList.length; j++) {
+        MatchTournament match = MatchTournament(
+          player1: userList[i],
+          player2: userList[j],
+          score: '', // Vous pouvez initialiser le score à un état par défaut
+        );
+        matches.add(match);
       }
-
-      // Déterminer le gagnant du match
-      String winner = victoriesPlayer1 > victoriesPlayer2
-          ? match.player1
-          : victoriesPlayer2 > victoriesPlayer1
-              ? match.player2
-              : ''; // Si égalité, pas de gagnant
-
-      // Mettre à jour le nombre total de victoires pour chaque joueur
-      victories[match.player1] = (victories[match.player1] ?? 0) +
-          (winner == match.player1
-              ? 1
-              : 0); // Incrémenter si le joueur est le gagnant
-      victories[match.player2] = (victories[match.player2] ?? 0) +
-          (winner == match.player2
-              ? 1
-              : 0); // Incrémenter si le joueur est le gagnant
     }
 
-    // Convertir le map en une liste triée par victoires décroissantes
-    List<MapEntry<String, int>> sortedEntries = victories.entries.toList()
-      ..sort((entry1, entry2) => entry2.value.compareTo(entry1.value));
-
-    // Construire la liste de classement sous forme de chaînes de texte
-    List<String> ranking = sortedEntries
-        .asMap()
-        .map((index, entry) =>
-            MapEntry(index + 1, "${entry.key} - ${entry.value} victoires"))
-        .values
-        .toList();
-
-    return ranking;
+    return matches;
   }
-}
 
-class TournamentNode extends Node {
-  final String label;
+  List<Poule> generatePools(List<String> userList) {
+    List<String> shuffledUsers = List.from(userList)..shuffle();
+    int usersPerPool = (shuffledUsers.length / 4).ceil();
+    List<List<String>> userGroups = List.generate(
+      4,
+      (index) {
+        int start = index * usersPerPool;
+        int end = min((index + 1) * usersPerPool, shuffledUsers.length);
+        return shuffledUsers.sublist(start, end);
+      },
+    );
 
-  TournamentNode(int super.id, this.label) : super.Id();
+    List<Poule> poules = List.generate(
+      4,
+      (index) {
+        List<String> usersInPoule = userGroups[index];
+        List<MatchTournament> matchesInPoule = generateMatches(usersInPoule);
 
-  static Widget builder(BuildContext context, Node node, Map<int, Node> graph) {
-    return Builder(
-      builder: (BuildContext context) {
-        return Container(
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.blue, // Couleur du nœud
-          ),
-          child: Center(
-            child: Text(
-              (node as TournamentNode).label,
-              style: const TextStyle(color: Colors.white), // Couleur du texte
-            ),
-          ),
+        return Poule(
+          name: String.fromCharCode('A'.codeUnitAt(0) + index),
+          playerList: usersInPoule,
+          matchList: matchesInPoule,
         );
       },
     );
+    // Référence à l'emplacement où vous souhaitez enregistrer les poules
+    DatabaseReference poulesRef =
+        tournamentRef.child(widget.tournament.name).child('pouleList');
+
+    // Convertir la liste de poules en une liste de maps
+    List<Map<String, dynamic>> poulesData =
+        poules.map((poule) => poule.toJson()).toList();
+    for (var currentElement in poules) {
+      Map<String, dynamic> currentPouleData = poulesData
+          .where((element) => element["name"] == currentElement.name)
+          .first;
+      currentPouleData.remove("name");
+      poulesRef.child(currentElement.name).set(currentPouleData);
+    }
+
+    return poules;
+  }
+
+  Widget _buildParticipantList() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: widget.tournament.participants.map((item) {
+        return Text(item);
+        // Ajoutez d'autres éléments de liste ici si nécessaire
+      }).toList(),
+    );
   }
 }
+
+enum TournamentPhase { quart, semi }

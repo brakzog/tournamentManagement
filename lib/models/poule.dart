@@ -19,4 +19,13 @@ class Poule {
       playerList: map['playerList'],
     );
   }
+
+  // Ajoutez cette méthode à votre classe Poule pour convertir une poule en map
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'players': playerList.map((player) => player).toList(),
+      'matchs': matchList.map((match) => match.toJson()).toList(),
+    };
+  }
 }
