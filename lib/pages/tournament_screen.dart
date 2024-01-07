@@ -23,7 +23,7 @@ class TournamentsScreenState extends State<TournamentScreen> {
   // ignore: deprecated_member_use
   final databaseReference = FirebaseDatabase.instance.reference();
   List<Tournament> tournaments = [];
-  late List<Tournament> upcomingTournaments = [];
+  //late List<Tournament> upcomingTournaments = [];
   late List<Tournament> pastTournaments = [];
   late List<Tournament> cancelNotPlayedTournaments = [];
   late List<Tournament> inProgressTournament = [];
@@ -34,7 +34,7 @@ class TournamentsScreenState extends State<TournamentScreen> {
     fetchTournamentsFromFirebase().then((map) {
       pastTournaments = map["past"] as List<Tournament>;
       inProgressTournament = map["present"] as List<Tournament>;
-      upcomingTournaments = map["future"] as List<Tournament>;
+      //  upcomingTournaments = map["future"] as List<Tournament>;
       cancelNotPlayedTournaments = map["cancel"] as List<Tournament>;
     });
   }
@@ -43,14 +43,14 @@ class TournamentsScreenState extends State<TournamentScreen> {
     Map<String, List<Tournament>> mapReturn = HashMap();
     List<Tournament> inProgress = [];
     List<Tournament> past = [];
-    List<Tournament> future = [];
+    // List<Tournament> future = [];
     List<Tournament> cancel = [];
 
     final ref = FirebaseDatabase.instance.ref();
     final snapshot = await ref.child('tournois').get();
     if (snapshot.exists) {
       return buildMapTournament(
-          snapshot, inProgress, future, past, cancel, mapReturn);
+          snapshot, inProgress /*, future*/, past, cancel, mapReturn);
     } else {
       if (kDebugMode) {
         print('No data available.');
@@ -62,7 +62,7 @@ class TournamentsScreenState extends State<TournamentScreen> {
   Map<String, List<Tournament>> buildMapTournament(
       DataSnapshot snapshot,
       List<Tournament> inProgress,
-      List<Tournament> future,
+      //  List<Tournament> future,
       List<Tournament> past,
       List<Tournament> cancel,
       Map<String, List<Tournament>> mapReturn) {
@@ -90,7 +90,7 @@ class TournamentsScreenState extends State<TournamentScreen> {
       );
       // Vérifiez si le tournoi appartient à l'utilisateur actuel (par exemple, par ID d'utilisateur).
       if (tournament.createdBy == FirebaseAuth.instance.currentUser?.email) {
-        retrieveCurrentUserData(tournament, inProgress, future, past, cancel);
+        retrieveCurrentUserData(tournament, inProgress, past, cancel);
       } else {
         if (kDebugMode) {
           print(
@@ -100,7 +100,6 @@ class TournamentsScreenState extends State<TournamentScreen> {
     });
     mapReturn["past"] = past;
     mapReturn["present"] = inProgress;
-    mapReturn["future"] = future;
     mapReturn["cancel"] = cancel;
     return mapReturn;
   }
@@ -108,7 +107,6 @@ class TournamentsScreenState extends State<TournamentScreen> {
   void retrieveCurrentUserData(
       Tournament tournament,
       List<Tournament> inProgress,
-      List<Tournament> future,
       List<Tournament> past,
       List<Tournament> cancel) {
     bool isChecked = false;
@@ -116,13 +114,14 @@ class TournamentsScreenState extends State<TournamentScreen> {
     tournaments.add(tournament);
     //Récupération de l'ensemble des tournois en cours
     if (tournament.tournamentDate.beginingDate != null &&
-        tournament.tournamentDate.finalDate != null) {
+            tournament.pouleList.isEmpty ||
+        tournament.finalMatchList.finalMatch.score.isEmpty) {
       isChecked = addInProgressTournament(tournament, isChecked, inProgress);
     }
     //Recuperation de l'ensemble des tournois à venir
-    if (!isChecked && tournament.tournamentDate.beginingDate != null) {
+    /*if (!isChecked && tournament.tournamentDate.beginingDate != null) {
       isChecked = addFutureTournament(tournament, isChecked, future);
-    }
+    }*/
     //Récupération de l'ensemble des tournois déjà joués
     if (!isChecked && tournament.tournamentDate.finalDate != null) {
       isChecked = addPastTournament(tournament, isChecked, past);
@@ -150,30 +149,12 @@ class TournamentsScreenState extends State<TournamentScreen> {
     return isChecked;
   }
 
-  bool addFutureTournament(
-      Tournament tournament, bool isChecked, List<Tournament> future) {
-    DateTime tournamentDate = DateFormat('dd/MM/yyyy')
-        .parse(tournament.tournamentDate.beginingDate!); //securisé au dessus
-    if (tournamentDate.isAfter(DateTime.now())) {
-      if (kDebugMode) print("tournoi à venir : $tournament");
-      isChecked = true;
-      future.add(tournament);
-    }
-    return isChecked;
-  }
-
   bool addInProgressTournament(
       Tournament tournament, bool isChecked, List<Tournament> inProgress) {
-    DateTime beginTournament = DateFormat('dd/MM/yyyy')
-        .parse(tournament.tournamentDate.beginingDate!); //securisé au dessus
-    DateTime finaleDate = DateFormat('dd/MM/yyyy')
-        .parse(tournament.tournamentDate.finalDate!); //securisé au dessus
-    if (beginTournament.isBefore(DateTime.now()) &&
-        finaleDate.isAfter(DateTime.now())) {
-      isChecked = true;
-      if (kDebugMode) print("tournoi en cours : $tournament");
-      //  inProgressTournament.add(tournament);
+    if (tournament.tournamentDate.finalDate == null ||
+        tournament.tournamentDate.finalDate!.isEmpty) {
       inProgress.add(tournament);
+      isChecked = true;
     }
     return isChecked;
   }
@@ -181,9 +162,6 @@ class TournamentsScreenState extends State<TournamentScreen> {
   TournamentDate getTournamentDate(Map<Object?, Object?> mapValue) {
     final dateMap = mapValue["tournamentDate"] as Map<Object?, Object?>;
 
-    final suggestionDates = dateMap["suggestionDate"] != null
-        ? dateMap["suggestionDate"] as List<Object?>
-        : null;
     final pouleDates = dateMap["pouleListDate"] as Map<Object?, Object?>?;
     final quarterDates = dateMap["quarterListDate"] as List<Object?>?;
     final semiDates = dateMap["semiListDate"] as List<Object?>?;
@@ -191,9 +169,6 @@ class TournamentsScreenState extends State<TournamentScreen> {
 
     TournamentDate tournamentDate = TournamentDate(
       beginingDate: "${dateMap["beginingDate"]}",
-      suggestionDate:
-          suggestionDates != null ? suggestionDates.cast<String>() : [],
-      expirationDate: " ${dateMap["expirationDate"]}",
     );
     if (pouleDates != null) {
       pouleDates.forEach((key, value) {
@@ -315,7 +290,7 @@ class TournamentsScreenState extends State<TournamentScreen> {
             return ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: 4,
+              itemCount: 3,
               itemBuilder: (context, index) {
                 return _buildList(index);
               },
@@ -331,14 +306,14 @@ class TournamentsScreenState extends State<TournamentScreen> {
   Widget _buildList(int index) {
     List<List<Tournament>> tournamentCategories = [
       inProgressTournament,
-      upcomingTournaments,
+      //upcomingTournaments,
       pastTournaments,
       cancelNotPlayedTournaments,
     ];
 
     List<String> categoryTitles = [
-      "Current Playing",
-      "Next Tournaments",
+      "Current Playing or Next to Play",
+      // "Next Tournaments",
       "Past Tournaments",
       "Cancelled Tournaments",
     ];

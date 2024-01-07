@@ -20,8 +20,7 @@ dependencies:
   the_apple_sign_in: ^1.1.1
   intl: ^0.19.0
   flutter_datetime_picker: ^1.5.1
-
-  graphview: ^1.2.0
+  collection: ^1.15.0
 
 
 

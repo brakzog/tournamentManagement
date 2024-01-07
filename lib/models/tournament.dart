@@ -37,11 +37,21 @@ class Tournament {
   String toString() {
     return "Tournoi : $name, créé par $createdBy, pour du $sportEvent, avec ${participants.toString()} et ayant lieu ${tournamentDate.toString()}";
   }
+
+  void updatePoule(
+      String pouleToUpdate, String player1, String player2, String score) {
+    Poule findPoule =
+        pouleList.where((element) => element.name == pouleToUpdate).first;
+
+    //findPoule.matchList[matchIndex].score = score;
+    int index = findPoule.matchList.indexWhere((element) =>
+        (element.player1 == player1 && element.player2 == player2) ||
+        (element.player1 == player2 && element.player2 == player1));
+    findPoule.matchList[index].score = score;
+  }
 }
 
 class TournamentDate {
-  final List<String> suggestionDate;
-  final String expirationDate;
   String? beginingDate;
   List<String>? pouleListDate;
   List<String>? quarterListDate;
@@ -49,8 +59,6 @@ class TournamentDate {
   String? finalDate;
 
   TournamentDate({
-    required this.suggestionDate,
-    required this.expirationDate,
     this.beginingDate,
     this.pouleListDate,
     this.quarterListDate,
@@ -60,14 +68,14 @@ class TournamentDate {
 
   @override
   String toString() {
-    return "suggestion : $suggestionDate, expiration: $expirationDate, begin: $beginingDate, poule: $pouleListDate, quarter: $quarterListDate, semi: $semiListDate, final: $finalDate";
+    return "begin: $beginingDate, poule: $pouleListDate, quarter: $quarterListDate, semi: $semiListDate, final: $finalDate";
   }
 }
 
 
 /*
 Un tournoi a
- une liste de date proposée,
+ une date de tournoi,
 une date max pour valider inscription
 une date de début qui prend une valeur paremi les proposées
 une liste de date pour les poules, 

@@ -2,7 +2,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 class CreateTournamentPage extends StatefulWidget {
   const CreateTournamentPage({super.key});
@@ -16,15 +15,14 @@ class CreateTournamentPageState extends State<CreateTournamentPage> {
       TextEditingController();
   final TextEditingController _locationController = TextEditingController();
   final TextEditingController _eventTypeController = TextEditingController();
-  final TextEditingController _expirationDateController =
+  final TextEditingController _tournamentDateController =
       TextEditingController();
   final List<String> _guestList = [];
-  final List<DateTime> _selectedDates = [];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBodyBehindAppBar: true,
+      extendBodyBehindAppBar: false,
       appBar: AppBar(
         title: const Text(
           "Créer un tournoi",
@@ -45,9 +43,11 @@ class CreateTournamentPageState extends State<CreateTournamentPage> {
         ],
       ),
       body: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               TextFormField(
@@ -82,15 +82,7 @@ class CreateTournamentPageState extends State<CreateTournamentPage> {
                 onPressed: () {
                   _showDateTimePickerDialog(context);
                 },
-                child: const Text("Ajouter un choix de date"),
-              ),
-              const SizedBox(height: 16.0),
-              ElevatedButton(
-                onPressed: () {
-                  _showExpirationDateTimePickerDialog(context);
-                },
-                child: Text(
-                    "Date limite d'inscription:\n ${_expirationDateController.text}"),
+                child: const Text("Date de démarrage du tournoi"),
               ),
               const SizedBox(height: 16.0),
               ElevatedButton(
@@ -139,7 +131,7 @@ class CreateTournamentPageState extends State<CreateTournamentPage> {
             onChanged: (value) {
               guest = value;
             },
-            decoration: const InputDecoration(hintText: 'Email de l\'invité'),
+            decoration: const InputDecoration(hintText: 'Nom de l\'invité'),
           ),
           actions: [
             TextButton(
@@ -150,6 +142,9 @@ class CreateTournamentPageState extends State<CreateTournamentPage> {
             ),
             ElevatedButton(
               onPressed: () {
+                setState(() {
+                  _guestList.add(guest);
+                });
                 Navigator.pop(context, guest); // Ajouter
               },
               child: const Text('Ajouter'),
@@ -176,55 +171,7 @@ class CreateTournamentPageState extends State<CreateTournamentPage> {
   }
 
   Widget _buildDateList() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text("Choix de dates"),
-        const SizedBox(height: 8.0),
-        Wrap(
-          children: _selectedDates.map((dateStr) {
-            return Chip(
-              label: Text(DateFormat('dd/MM/yyyy HH:mm').format(dateStr)),
-              deleteIcon: const Icon(Icons.cancel),
-              onDeleted: () {
-                _removeDate(dateStr);
-              },
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  void _removeDate(DateTime date) {
-    setState(() {
-      _selectedDates.remove(date);
-    });
-  }
-
-  Future<void> _showExpirationDateTimePickerDialog(BuildContext context) async {
-    DateTime currentDate = DateTime.now();
-
-    List<Object?> results = await Future.wait([
-      showDatePicker(
-        context: context,
-        initialDate: currentDate,
-        firstDate: currentDate,
-        lastDate: DateTime(currentDate.year + 100),
-        selectableDayPredicate: (DateTime date) {
-          return true;
-        },
-      ),
-    ]);
-
-    DateTime? pickedDate = results[0] as DateTime?;
-
-    if (pickedDate != null) {
-      setState(() {
-        _expirationDateController.text =
-            "${pickedDate.day}/${pickedDate.month}/${pickedDate.year}";
-      });
-    }
+    return Text("Date du tournoi: ${_tournamentDateController.text}");
   }
 
   // Fonction pour afficher le dialogue de sélection de dates
@@ -261,13 +208,10 @@ class CreateTournamentPageState extends State<CreateTournamentPage> {
           pickedTime.hour,
           pickedTime.minute,
         );
-
-        // Utilisez selectedDateTime selon vos besoins
-        if (!_selectedDates.contains(selectedDateTime)) {
-          setState(() {
-            _selectedDates.add(selectedDateTime);
-          });
-        }
+        setState(() {
+          _tournamentDateController.text =
+              "${selectedDateTime.day}/${selectedDateTime.month}/${selectedDateTime.year}";
+        });
       }
     }
   }
@@ -295,15 +239,13 @@ class CreateTournamentPageState extends State<CreateTournamentPage> {
   void submitTournament() {
     String tournamentName = _tournamentNameController.text;
     String location = _locationController.text;
-    String expirationDate = _expirationDateController.text;
 
     // should always be not null as the user is already connected from here
     String createdBy = (FirebaseAuth.instance.currentUser!.email)!;
 
     if (tournamentName.isEmpty ||
         location.isEmpty ||
-        _selectedDates.isEmpty ||
-        expirationDate.isEmpty ||
+        _tournamentDateController.text.isEmpty ||
         _guestList.isEmpty) {
       _showErrorDialog(context,
           "Un des champs requis à la création du tournoi n'a pas été rempli. Veuillez le remplir avant de soumettre le tournoi");
@@ -322,10 +264,10 @@ class CreateTournamentPageState extends State<CreateTournamentPage> {
     Map<String, dynamic> tournamentData = {
       "createdBy": createdBy,
       "location": location,
+      "participants": _guestList,
       "sportEvent": _eventTypeController.text,
       "tournamentDate": {
-        "suggestionDate": getSuggestionDate(),
-        "expirationDate": _expirationDateController.text,
+        "beginingDate": _tournamentDateController.text,
       },
     };
 
@@ -336,7 +278,7 @@ class CreateTournamentPageState extends State<CreateTournamentPage> {
       if (kDebugMode) {
         print("Tournoi enregistré avec succès");
       }
-      notifyRegisteredUser();
+      showDialogTournament();
     }).catchError((error) {
       // Gestion des erreurs
       if (kDebugMode) {
@@ -345,14 +287,26 @@ class CreateTournamentPageState extends State<CreateTournamentPage> {
     });
   }
 
-  //TODO voir comment on peut notifier l'application des utilisateurs invités
-  void notifyRegisteredUser() {}
-
-  List<String> getSuggestionDate() {
-    List<String> formattedDates = _selectedDates.map((dateTime) {
-      return DateFormat("dd/MM/yyyy à HH:mm:ss").format(dateTime);
-    }).toList();
-    return formattedDates;
+  void showDialogTournament() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Creation réussie"),
+          content: const Text("Votre tournoi a bien été enregistré!"),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Ferme la boîte de dialogue
+                Navigator.of(context)
+                    .pop(); // Ferme la page de crea tin du tournoi
+              },
+              child: const Text("OK"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   bool isValidEmail(String input) {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:graphview/GraphView.dart';
+
+import '../graphView/GraphView.dart';
 
 class TournamentNode extends Node {
   final String label;

@@ -69,7 +69,11 @@ class HomePageState extends State<HomePage> {
             AnimatedCreateTournamentPageRoute(
               page: const CreateTournamentPage(),
             ),
-          );
+          ).then((value) {
+            setState(() {
+              _currentIndex = 0;
+            });
+          });
         },
         child: const Icon(Icons.add),
       ),
