@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "77372019755",
+    "firebase_url": "https://gestion-tournoi-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "gestion-tournoi",
+    "storage_bucket": "gestion-tournoi.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:77372019755:android:378f42f8e750d2cd41466e",
+        "android_client_info": {
+          "package_name": "com.jro.tournament_management"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "77372019755-hvmmpbkfqlc1otshbceeb160vpp88ucu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCnRE9cWnImxD5tAMXWM-Jdrya6vjoDXzo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "77372019755-hr3tdno3hqen7hucsn7gm6uhu1mr1rj8.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "77372019755-4r074q1chahgu8mor5508eo3tbu1tto0.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.jro.tournoi.Organisation-Tournoi"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

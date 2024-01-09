@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.tournament_management">
+    package="com.jro.tournament_management">
    <application
         android:label="tournament_management"
         android:name="${applicationName}"
