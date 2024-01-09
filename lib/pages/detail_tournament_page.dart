@@ -95,24 +95,28 @@ class _DetailTournamentScreenState extends State<DetailTournamentPage>
           // Page pour les matchs de poule
           _buildPoolMatchesPage(),
           // Page pour l'arbre de déroulement des matchs
-          Expanded(
-            child: InteractiveViewer(
-              constrained: false,
-              boundaryMargin: const EdgeInsets.all(100),
-              minScale: 0.01,
-              maxScale: 5.6,
-              child: Center(
-                child: GraphView(
-                  builder: (node) =>
-                      rectangleWidget((node as TournamentNode).label),
-                  graph: createTournamentTree(tournament.finalMatchList),
-                  algorithm: BuchheimWalkerAlgorithm(
-                    builder,
-                    TreeEdgeRenderer(builder),
+          Column(
+            children: [
+              Expanded(
+                child: InteractiveViewer(
+                  constrained: false,
+                  boundaryMargin: const EdgeInsets.all(100),
+                  minScale: 0.01,
+                  maxScale: 5.6,
+                  child: Center(
+                    child: GraphView(
+                      builder: (node) =>
+                          rectangleWidget((node as TournamentNode).label),
+                      graph: createTournamentTree(tournament.finalMatchList),
+                      algorithm: BuchheimWalkerAlgorithm(
+                        builder,
+                        TreeEdgeRenderer(builder),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
         ],
       ),
