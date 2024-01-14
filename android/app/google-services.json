@@ -15,6 +15,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "77372019755-vj6ak16sp30gsi5rc5ffmtfj1c0oqm58.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.jro.tournament_management",
+            "certificate_hash": "b3300ac1d3eab7770654feb580482594785ae060"
+          }
+        },
+        {
           "client_id": "77372019755-hvmmpbkfqlc1otshbceeb160vpp88ucu.apps.googleusercontent.com",
           "client_type": 3
         }
