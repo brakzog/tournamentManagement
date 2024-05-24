@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">TournamentManagement</string>
+    <string name="welcome">Bienvenue dans Gestion de Tournoi</string>
+    <string name="toast_error">Erreur de connexion!</string>
+    <string name="sign_in_button">Se connecter avec Google</string>
+    <string name="connection_error">Erreur de connexion</string>
+</resources>
