@@ -445,6 +445,11 @@ class _DetailTournamentScreenState extends State<DetailTournamentPage>
                 tournament.updatePoule(_selectedPoule, newMatch.player1,
                     newMatch.player2, newMatch.score);
               });
+
+              // Vérifier si tous les matchs de poule du tournoi ont été joués
+              if (isAllMatchPlayed()) {
+                updateGraph();
+              }
             } else if (element['player2'] == newMatch.player1 &&
                 element['player1'] == newMatch.player2) {
               // Correspondance trouvée, mettre à jour le score
@@ -457,12 +462,104 @@ class _DetailTournamentScreenState extends State<DetailTournamentPage>
                 tournament.updatePoule(_selectedPoule, newMatch.player1,
                     newMatch.player2, newMatch.score);
               });
+
+              // Vérifier si tous les matchs de poule du tournoi ont été joués
+              if (isAllMatchPlayed()) {
+                updateGraph();
+              }
             }
             i++;
           });
         });
       }
     });
+  }
+
+  bool isAllMatchPlayed() {
+    for (var poule in tournament.pouleList) {
+      for (var match in poule.matchList) {
+        if (match.score.isEmpty) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  void updateGraph() {
+    // Calculez les classements des poules
+    Map<String, List<String>> pouleRankings = {};
+
+    for (var poule in tournament.pouleList) {
+      var wins = calculateWins(poule.matchList, poule.playerList);
+      pouleRankings[poule.name] = rankPlayers(wins);
+    }
+
+    // Créez les matchs pour les quarts de finale
+    tournament.finalMatchList.quarterFinalList =
+        createFinalBracket(pouleRankings);
+
+    setState(() {});
+  }
+
+  Map<String, int> calculateWins(
+      List<MatchTournament> matches, List<String> players) {
+    Map<String, int> wins = {for (var player in players) player: 0};
+    for (var match in matches) {
+      var scoreParts = match.score.split(';');
+      int player1Wins = 0;
+      int player2Wins = 0;
+      for (var score in scoreParts) {
+        var setScores = score.split('-');
+        int player1Score = int.parse(setScores[0]);
+        int player2Score = int.parse(setScores[1]);
+        if (player1Score > player2Score) {
+          player1Wins++;
+        } else if (player2Score > player1Score) {
+          player2Wins++;
+        }
+      }
+      if (player1Wins > player2Wins) {
+        wins[match.player1] = wins[match.player1]! + 1;
+      } else if (player2Wins > player1Wins) {
+        wins[match.player2] = wins[match.player2]! + 1;
+      }
+    }
+    return wins;
+  }
+
+  List<String> rankPlayers(Map<String, int> wins) {
+    var sortedEntries = wins.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    return sortedEntries.map((e) => e.key).toList();
+  }
+
+  List<MatchTournament> createFinalBracket(
+      Map<String, List<String>> pouleRankings) {
+    List<MatchTournament> quarterFinals = [
+      MatchTournament(
+        player1: pouleRankings['A']![0],
+        player2: pouleRankings['B']![1],
+        score: '',
+      ),
+      MatchTournament(
+        player1: pouleRankings['C']![0],
+        player2: pouleRankings['D']![1],
+        score: '',
+      ),
+      MatchTournament(
+        player1: pouleRankings['B']![0],
+        player2: pouleRankings['A']![1],
+        score: '',
+      ),
+      MatchTournament(
+        player1: pouleRankings['D']![0],
+        player2: pouleRankings['C']![1],
+        score: '',
+      ),
+    ];
+
+    return quarterFinals;
   }
 
 // Fonction pour vérifier le format du score
