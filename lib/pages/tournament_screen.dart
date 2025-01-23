@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:collection';
 
+import 'package:date_formatter/date_formatter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:tournament_management/models/end_tournament.dart';
 import 'package:tournament_management/models/match.dart';
 import 'package:tournament_management/models/poule.dart';
@@ -21,7 +21,7 @@ class TournamentScreen extends StatefulWidget {
 
 class TournamentsScreenState extends State<TournamentScreen> {
   // ignore: deprecated_member_use
-  final databaseReference = FirebaseDatabase.instance.reference();
+  final databaseReference = FirebaseDatabase.instance.ref();
   List<Tournament> tournaments = [];
   //late List<Tournament> upcomingTournaments = [];
   late List<Tournament> pastTournaments = [];
@@ -138,9 +138,11 @@ class TournamentsScreenState extends State<TournamentScreen> {
 
   bool addPastTournament(
       Tournament tournament, bool isChecked, List<Tournament> past) {
-    DateTime finalTournamentDate = DateFormat('dd/MM/yyyy')
-        .parse(tournament.tournamentDate.finalDate!); //securisé au dessus
-    if (finalTournamentDate.isBefore(DateTime.now())) {
+    /*DateTime finalTournamentDate = DateFormat('dd/MM/yyyy')
+        .parse(tournament.tournamentDate.finalDate!); *///securisé au dessus
+    String date = tournament.tournamentDate.finalDate!;
+    DateTime? finalTournamentDate = DateFormatter.toDateTime(date: date, inputFormat: "dd/MM§yyyy");
+    if (finalTournamentDate?.isBefore(DateTime.now()) == true) {
       if (kDebugMode) print("tournoi déjà joué : $tournament");
 
       isChecked = true;

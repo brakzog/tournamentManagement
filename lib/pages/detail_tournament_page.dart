@@ -421,59 +421,55 @@ class _DetailTournamentScreenState extends State<DetailTournamentPage>
   }
 
   void updateScore(
-      DatabaseReference selectedPouleRef, MatchTournament newMatch) {
-    selectedPouleRef.once().then((snapshot) {
-      // Vérifiez si l'événement contient des données
-      if (snapshot.snapshot.value != null) {
-        Map<dynamic, dynamic> matches =
-            snapshot.snapshot.value as Map<dynamic, dynamic>;
+    DatabaseReference selectedPouleRef, MatchTournament newMatch) async {
+  final snapshot = await selectedPouleRef.once();
 
-        // Parcourir les matches
-        matches.forEach((key, matchListMap) {
-          int i = 0;
-          // ignore: avoid_function_literals_in_foreach_calls
-          (matchListMap as List<Object?>).forEach((element) async {
-            Map<Object?, Object?> currentMap = element as Map<Object?, Object?>;
-            if (currentMap['player1'] == newMatch.player1 &&
-                currentMap['player2'] == newMatch.player2) {
-              // Correspondance trouvée, mettre à jour le score
-              await selectedPouleRef
-                  .child("matchs")
-                  .child("$i")
-                  .update(newMatch.toJson());
-              setState(() {
-                tournament.updatePoule(_selectedPoule, newMatch.player1,
-                    newMatch.player2, newMatch.score);
-              });
+  if (snapshot.snapshot.value != null) {
+    Map<dynamic, dynamic> matches =
+        snapshot.snapshot.value as Map<dynamic, dynamic>;
 
-              // Vérifier si tous les matchs de poule du tournoi ont été joués
-              if (isAllMatchPlayed()) {
-                updateGraph();
+    matches.forEach((key, matchList) async {
+      if (matchList is List<Object?>) {
+        for (int i = 0; i < matchList.length; i++) {
+          var element = matchList[i];
+
+          if (element is Map<Object?, Object?>) {
+            // Vérifie si l'élément correspond au match recherché
+            if ((element['player1'] == newMatch.player1 &&
+                    element['player2'] == newMatch.player2) ||
+                (element['player2'] == newMatch.player1 &&
+                    element['player1'] == newMatch.player2)) {
+              try {
+                await selectedPouleRef
+                    .child("matchs")
+                    .child("$i")
+                    .update(newMatch.toJson());
+
+                setState(() {
+                  tournament.updatePoule(_selectedPoule, newMatch.player1,
+                      newMatch.player2, newMatch.score);
+                  if (isAllMatchPlayed()) {
+                  updateGraph();
+                }
+                });
+
+                
+              } catch (e) {
+                print("Erreur lors de la mise à jour du match $i : $e");
               }
-            } else if (element['player2'] == newMatch.player1 &&
-                element['player1'] == newMatch.player2) {
-              // Correspondance trouvée, mettre à jour le score
-              await selectedPouleRef
-                  .child("matchs")
-                  .child("$i")
-                  .update(newMatch.toJson());
-
-              setState(() {
-                tournament.updatePoule(_selectedPoule, newMatch.player1,
-                    newMatch.player2, newMatch.score);
-              });
-
-              // Vérifier si tous les matchs de poule du tournoi ont été joués
-              if (isAllMatchPlayed()) {
-                updateGraph();
-              }
+              break; // Sort de la boucle une fois le match trouvé
             }
-            i++;
-          });
-        });
+          } else {
+            print("Élément inattendu dans la liste : $element");
+          }
+        }
+      } else {
+        print("Match list n'est pas une liste valide : $matchList");
       }
     });
   }
+}
+
 
   bool isAllMatchPlayed() {
     for (var poule in tournament.pouleList) {
@@ -498,8 +494,22 @@ class _DetailTournamentScreenState extends State<DetailTournamentPage>
     // Créez les matchs pour les quarts de finale
     tournament.finalMatchList.quarterFinalList =
         createFinalBracket(pouleRankings);
+    
+    saveQuarterFinalsToFirebase(tournamentRef, tournament.finalMatchList.quarterFinalList);
 
     setState(() {});
+  }
+
+
+  void saveQuarterFinalsToFirebase(DatabaseReference tournamentRef, List<MatchTournament> quarterFinals) async {
+  try {
+    await tournamentRef.child(tournament.name).update({
+      "quartFinal": quarterFinals.map((match) => match.toJson()).toList()
+      });
+      print("Les quarts de finale ont été enregistrés dans Firebase.");
+    } catch (e) {
+      print("Erreur lors de l'enregistrement des quarts de finale : $e");
+    }
   }
 
   Map<String, int> calculateWins(

@@ -1,9 +1,11 @@
+import 'dart:io';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:the_apple_sign_in/the_apple_sign_in.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'home_page.dart';
 
@@ -141,24 +143,24 @@ class LoginPageState extends State<LoginPage> {
       // Utilisez Google Sign-In pour l'authentification
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
 
-      if (googleUser != null) {
         // Obtenez l'ID utilisateur Google
-        final googleUserId = googleUser.id;
+        final googleUserId = googleUser?.id;
 
         // Stockez l'ID utilisateur Google de manière sécurisée
         await const FlutterSecureStorage()
             .write(key: "googleUserId", value: googleUserId);
 
         // Obtenez les informations d'authentification
-        final GoogleSignInAuthentication googleAuth =
-            await googleUser.authentication;
+        final GoogleSignInAuthentication? googleAuth =
+            await googleUser?.authentication;
 
         // Connectez-vous à Firebase avec les informations d'authentification Google
-        final AuthCredential credential = GoogleAuthProvider.credential(
-          accessToken: googleAuth.accessToken,
-          idToken: googleAuth.idToken,
+        final AuthCredential? credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth?.accessToken,
+          idToken: googleAuth?.idToken,
         );
-        await FirebaseAuth.instance.signInWithCredential(credential);
+        if(credential != null)
+          await FirebaseAuth.instance.signInWithCredential(credential);
 
         // Une fois connecté, vous pouvez effectuer des actions supplémentaires si nécessaire
         // Par exemple, rediriger l'utilisateur vers la page principale.
@@ -171,7 +173,7 @@ class LoginPageState extends State<LoginPage> {
             },
           ),
         );
-      }
+      
     } catch (e) {
       // Gérez les erreurs d'authentification
       if (kDebugMode) {
@@ -192,19 +194,10 @@ class LoginPageState extends State<LoginPage> {
               onPressed: _signInWithGoogle,
               child: const Text("Se connecter avec Google"),
             ),
-            /*ElevatedButton(
-              onPressed: () async {
-                // Connexion avec Apple
-                final user = await _signInWithApple();
-                if (user != null) {
-                  // Redirigez l'utilisateur vers la page principale.
-                }
-              },
-              child: const Text("Se connecter avec Apple"),
-            ),*/
-            AppleSignInButton(
+            if(Platform.isIOS)
+              AppleSignInButton(
               onPressed: logInApple,
-            )
+            ),
           ],
         ),
       ),
