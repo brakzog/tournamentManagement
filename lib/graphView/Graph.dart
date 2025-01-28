@@ -219,6 +219,7 @@ class Edge {
   Edge(this.source, this.destination, {this.key, this.paint});
 
   @override
+  // ignore: non_nullable_equals_parameter
   bool operator ==(Object? other) =>
       identical(this, other) || other is Edge && hashCode == other.hashCode;
 

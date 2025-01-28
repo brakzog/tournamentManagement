@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:collection';
 
 import 'package:date_formatter/date_formatter.dart';
@@ -10,40 +9,32 @@ import 'package:tournament_management/models/end_tournament.dart';
 import 'package:tournament_management/models/match.dart';
 import 'package:tournament_management/models/poule.dart';
 import 'package:tournament_management/models/tournament.dart';
-import 'package:tournament_management/pages/detail_tournament_page.dart';
+import 'package:tournament_management/pages/detail_tournament/detail_tournament.dart';
 
-class TournamentScreen extends StatefulWidget {
-  const TournamentScreen({super.key});
-
-  @override
-  TournamentsScreenState createState() => TournamentsScreenState();
-}
-
-class TournamentsScreenState extends State<TournamentScreen> {
-  // ignore: deprecated_member_use
-  final databaseReference = FirebaseDatabase.instance.ref();
+class TournamentViewmodel with ChangeNotifier {
+  List<Tournament> inProgressTournament = [];
+  List<Tournament> pastTournaments = [];
+  List<Tournament> cancelNotPlayedTournaments = [];
   List<Tournament> tournaments = [];
-  //late List<Tournament> upcomingTournaments = [];
-  late List<Tournament> pastTournaments = [];
-  late List<Tournament> cancelNotPlayedTournaments = [];
-  late List<Tournament> inProgressTournament = [];
 
-  @override
-  void initState() {
-    super.initState();
-    fetchTournamentsFromFirebase().then((map) {
-      pastTournaments = map["past"] as List<Tournament>;
-      inProgressTournament = map["present"] as List<Tournament>;
-      //  upcomingTournaments = map["future"] as List<Tournament>;
-      cancelNotPlayedTournaments = map["cancel"] as List<Tournament>;
-    });
+
+  void navigateToDetailPage(BuildContext context, Tournament tournament, bool inProgress) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DetailTournament(
+          tournament: tournament,
+          inProgress: inProgress,
+        ),
+      ),
+    );
   }
+
 
   Future<Map<String, List<Tournament>>> fetchTournamentsFromFirebase() async {
     Map<String, List<Tournament>> mapReturn = HashMap();
     List<Tournament> inProgress = [];
     List<Tournament> past = [];
-    // List<Tournament> future = [];
     List<Tournament> cancel = [];
 
     final ref = FirebaseDatabase.instance.ref();
@@ -98,6 +89,9 @@ class TournamentsScreenState extends State<TournamentScreen> {
         }
       }
     });
+    this.inProgressTournament = inProgress;
+    this.pastTournaments = past;
+    this.cancelNotPlayedTournaments = cancel;
     mapReturn["past"] = past;
     mapReturn["present"] = inProgress;
     mapReturn["cancel"] = cancel;
@@ -228,8 +222,8 @@ class TournamentsScreenState extends State<TournamentScreen> {
 
   EndTournament getListFinalMatch(Map<Object?, Object?> mapValue) {
     //Map<Object?, Object?> finalMap = mapValue['final'] as Map<Object?, Object?>;
-    List<MatchTournament> quarterList = getMatchList('quartFinal', mapValue);
-    List<MatchTournament> semiList = getMatchList('semiFinal', mapValue);
+    List<MatchTournament> quarterList = getMatchListMap('quartFinal', mapValue);
+    List<MatchTournament> semiList = getMatchListMap('semiFinal', mapValue);
     MatchTournament smallFinall = getFinalMatch('smallFinal', mapValue);
     MatchTournament finale = getFinalMatch('final', mapValue);
     return EndTournament(
@@ -239,18 +233,17 @@ class TournamentsScreenState extends State<TournamentScreen> {
         quarterFinalList: quarterList);
   }
 
-  List<MatchTournament> getMatchList(
+
+  List<MatchTournament> getMatchListMap(
       String key, Map<Object?, Object?> mapValue) {
-    if (mapValue[key] == null) {
+     if (mapValue[key] == null) {
       return [];
     }
 
-    Map<Object?, Object?> objectMap = mapValue[key] as Map<Object?, Object?>;
+    List<Object?> objectMap = mapValue[key] as List<Object?>;
     // List<Object?> objectList = objectMap.values as List<Object?>;
     List<MatchTournament> matchList = [];
-    objectMap.forEach((key, value) {
-      List<Object?> valueList = value as List<Object?>;
-      for (var element in valueList) {
+    objectMap.forEach((element) {
         Map<Object?, Object?> valueMap = element as Map<Object?, Object?>;
         MatchTournament? currentMatch = MatchTournament(
           player1: "${valueMap['player1']}",
@@ -259,6 +252,31 @@ class TournamentsScreenState extends State<TournamentScreen> {
         );
         matchList.add(currentMatch);
       }
+    );
+    return matchList;
+  }
+
+  
+
+  List<MatchTournament> getMatchList(
+      String key, Map<Object?, Object?> mapValue) {
+    if (mapValue[key] == null) {
+      return [];
+    }
+
+    List<Object?> objectList = mapValue[key] as List<Object?>;
+    // List<Object?> objectList = objectMap.values as List<Object?>;
+    List<MatchTournament> matchList = [];
+    objectList.forEach((currentElem) {
+
+        Map<Object?, Object?> valueMap = currentElem as Map<Object?, Object?>;
+        MatchTournament? currentMatch = MatchTournament(
+          player1: "${valueMap['player1']}",
+          player2: "${valueMap['player2']}",
+          score: "${valueMap['score']}",
+        );
+        matchList.add(currentMatch);
+      
     });
     return matchList;
   }
@@ -273,95 +291,5 @@ class TournamentsScreenState extends State<TournamentScreen> {
       player2: "${objectMap['player2']}",
       score: "${objectMap['score']}",
     );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Mes Tournois"),
-      ),
-      body: FutureBuilder<Map<String, List<Tournament>>>(
-        future: fetchTournamentsFromFirebase(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return const Center(child: Text('Error fetching data'));
-          } else if (snapshot.hasData) {
-            return ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: 3,
-              itemBuilder: (context, index) {
-                return _buildList(index);
-              },
-            );
-          } else {
-            return const Center(child: Text('No data available'));
-          }
-        },
-      ),
-    );
-  }
-
-  Widget _buildList(int index) {
-    List<List<Tournament>> tournamentCategories = [
-      inProgressTournament,
-      //upcomingTournaments,
-      pastTournaments,
-      cancelNotPlayedTournaments,
-    ];
-
-    List<String> categoryTitles = [
-      "Current Playing or Next to Play",
-      // "Next Tournaments",
-      "Past Tournaments",
-      "Cancelled Tournaments",
-    ];
-
-    if (tournamentCategories[index].isNotEmpty) {
-      return ExpansionTile(
-        title: Text(categoryTitles[index]),
-        children: retrieveListTournament(
-          tournamentCategories[index],
-          index == 0,
-        ),
-      );
-    } else {
-      return ListTile(
-        title: Text(categoryTitles[index]),
-      );
-    }
-  }
-
-  List<Widget> retrieveListTournament(
-      List<Tournament> tournamentList, bool inProgress) {
-    return List.generate(tournamentList.length, (index) {
-      return InkWell(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => DetailTournamentPage(
-              tournament: tournamentList[index],
-              inProgress: inProgress,
-            ),
-          ),
-        ),
-        child: Container(
-          margin: const EdgeInsets.symmetric(
-              vertical: 8.0), // Ajustez la marge verticale selon vos besoins
-          padding: const EdgeInsets.all(12.0),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey),
-            borderRadius: BorderRadius.circular(8.0),
-          ),
-          child: Text(
-            tournamentList[index].name,
-            style: const TextStyle(fontSize: 16.0),
-          ),
-        ),
-      );
-    });
   }
 }

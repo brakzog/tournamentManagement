@@ -1,0 +1,32 @@
+{
+  "login_title": "Se Connecter",
+  "connect_google": "Connexion avec Google",
+  "logout": "Se déconnecter",
+
+  "tournament_management": "Gestion des tournois",
+  "my_tournaments": "Mes tournois",
+  "create_tournament": "Créer un tournoi",
+  "participation": "Participations",
+
+  "create_tournament_title": "Créer un tournoi",
+
+  "error_fetching": "Erreur de récupération des données",
+  "no_tournament_data": "Aucune données encore présentes",
+  "current_tournament": "Tournois en cours",
+  "past_tournaments": "Tournois passés",
+  "cancelled_tournaments": "Tournois annulés",
+
+  "detail_tournament": "Détails du tournoi",
+  "poule_phase": "Phase de poules",
+  "arbre_deroulement": "Arbre de déroulement",
+  
+  "result_match_input": "Saisi des résultats de match",
+  "player1_selection": "Sélectionnez le joueur 1",
+  "player2_selection": "Sélectionnez le joueur 2",
+  "score_input": "Saisissez le score",
+  "matchAlreadyPlayed": "Le match entre {player1} et {player2} a déjà été joué.",
+  "participants_list": "Liste des participants",
+  "poule_choice": "Choix de la poule",
+  "poule_matches": "Matches de poule",    
+  "rank": "Classement"
+}
