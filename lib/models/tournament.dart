@@ -73,6 +73,9 @@ class TournamentDate {
 }
 
 
+enum TournamentPhase { quart, semi }
+
+
 /*
 Un tournoi a
  une date de tournoi,

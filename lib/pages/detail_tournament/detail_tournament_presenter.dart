@@ -7,7 +7,6 @@ import 'package:tournament_management/models/end_tournament.dart';
 import 'package:tournament_management/models/match.dart';
 import 'package:tournament_management/models/poule.dart';
 import 'package:tournament_management/models/tournament.dart';
-import 'package:tournament_management/pages/detail_tournament_page.dart';
 import 'package:tournament_management/utils.dart';
 import 'package:tournament_management/widgets/tournament_node.dart';
 
