@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:tournament_management/pages/create_tournament/create_tournament_viewmodel.dart';
 import 'package:tournament_management/pages/detail_tournament/detail_tournament_viewmodel.dart';
 import 'package:tournament_management/pages/home/home.dart';
 import 'package:tournament_management/pages/home/home_viewmodel.dart';
@@ -25,7 +26,8 @@ void main() async {
         ChangeNotifierProvider(create: (_) => LoginViewModel()),
         ChangeNotifierProvider(create: (_) => HomeViewModel()),
         ChangeNotifierProvider(create: (_) => TournamentViewmodel()),
-                ChangeNotifierProvider(create: (_) => DetailTournamentViewModel()),
+        ChangeNotifierProvider(create: (_) => DetailTournamentViewModel()),
+        ChangeNotifierProvider(create: (_) => CreateTournamentViewModel()),
 
       ],
       child:    EasyLocalization(

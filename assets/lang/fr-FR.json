@@ -28,5 +28,7 @@
   "participants_list": "Liste des participants",
   "poule_choice": "Choix de la poule",
   "poule_matches": "Matches de poule",    
-  "rank": "Classement"
+  "rank": "Classement",
+  "success_creation": "Création Réussie!",
+  "tournament_created": "Votre tournoi a bien été enregistré!"
 }

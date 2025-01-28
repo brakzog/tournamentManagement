@@ -343,7 +343,7 @@ Widget _buildMatches(List<MatchTournament> matchList) {
 
                 if (matchExists) {
                   String errorMessage = tr('matchAlreadyPlayed',args: [selectedPlayer1, selectedPlayer2],);
-                  _showErrorDialog(context, errorMessage);
+                  showErrorDialog(context, errorMessage);
                 } else {
                   if (isValidScoreFormat(scoreController.text)) {
                     MatchTournament newMatch = MatchTournament(
@@ -354,7 +354,7 @@ Widget _buildMatches(List<MatchTournament> matchList) {
                     updateScore(selectedPouleRef, newMatch);
                     Navigator.of(context).pop();
                   } else {
-                    _showErrorDialog(context, 'Le format du score est incorrect. Utilisez le format Xi-Yi;Xi+1-Yi+1;...');
+                    showErrorDialog(context, 'Le format du score est incorrect. Utilisez le format Xi-Yi;Xi+1-Yi+1;...');
                   }
                 }
               },
@@ -394,26 +394,7 @@ Widget _buildMatches(List<MatchTournament> matchList) {
     );
   }
 
-  // Méthode pour afficher une alerte d'erreur
-  void _showErrorDialog(BuildContext context, String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Erreur'),
-          content: Text(message),
-          actions: [
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  
 
 
   void updateScore(DatabaseReference selectedPouleRef, MatchTournament newMatch) async {

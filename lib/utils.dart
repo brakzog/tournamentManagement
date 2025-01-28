@@ -1,3 +1,5 @@
+import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/material.dart';
 import 'package:tournament_management/models/match.dart';
 import 'package:tournament_management/models/poule.dart';
 
@@ -88,3 +90,47 @@ List<String> calculateRanking(Poule poule) {
 
   return ranking;
 }
+
+// Méthode pour afficher une alerte d'erreur
+  void showErrorDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Erreur'),
+          content: Text(message),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void showDialogTournament(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("success_creation".tr()),
+          content: Text("tournament_created".tr()),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Ferme la boîte de dialogue
+                Navigator.of(context)
+                    .pop(); // Ferme la page de creation du tournoi
+              },
+              child: const Text("OK"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+

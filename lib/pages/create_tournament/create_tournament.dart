@@ -64,7 +64,7 @@ class CreateTournamentPage extends StatelessWidget {
               ),
               const SizedBox(height: 16.0),
               ElevatedButton(
-                onPressed: presenter.submitTournament,
+                onPressed: () => presenter.submitTournament(context),
                 child: const Text("Créer le tournoi"),
               ),
             ],
