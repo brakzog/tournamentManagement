@@ -56,7 +56,7 @@ class DetailTournamentPresenter {
       controller: tabController,
       children: [
         _buildPoolMatchesPage(context),
-        _buildArbreDeDeroulementTab(),
+        _buildArbreDeDeroulementTab(context),
       ],
     ),
   );
@@ -551,9 +551,166 @@ Widget _buildMatches(List<MatchTournament> matchList) {
 
   //================================================= ARBRE ===============================================================================
 
-  Widget _buildArbreDeDeroulementTab() {
+
+List<String> getPlayerList(List<MatchTournament> listMatch) {
+  List<String> playerList = [];
+  for(MatchTournament match in listMatch) {
+    playerList.add(match.player1);
+    playerList.add(match.player2);
+  }
+  return playerList;
+}
+
+
+void showMatchArbreDialog(
+    BuildContext context,
+    Tournament tournament,
+    DatabaseReference tournamentRef,
+    String player1,
+    String player2,
+  ) {
+    List<String> playerList = List.empty();
+
+    if(hasNotEmptyElements(tournament.finalMatchList.quarterFinalList)) {
+      playerList = getPlayerList(tournament.finalMatchList.quarterFinalList);
+    } else if (hasNotEmptyElements(tournament.finalMatchList.semiFinalist)) {
+      playerList = getPlayerList(tournament.finalMatchList.semiFinalist);
+    } else if (tournament.finalMatchList.finalMatch.score.isEmpty) {
+      playerList = [tournament.finalMatchList.finalMatch.player1, tournament.finalMatchList.finalMatch.player2];
+    }
+
+    // Variables pour stocker les sélections des joueurs
+    String selectedPlayer1 = player1.isNotEmpty ? player1 : playerList.first;
+    String selectedPlayer2 = player2.isNotEmpty ? player2 : retrievePlayer(selectedPlayer1, tournament.finalMatchList);
+
+    // Contrôleur pour le champ de texte
+    TextEditingController scoreController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('result_match_input'.tr()),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildPlayerDropdown(
+                context,
+                playerList,
+                selectedPlayer1,
+                (value) {
+                  selectedPlayer1 = value!;
+                  selectedPlayer2 = retrievePlayer(selectedPlayer1, tournament.finalMatchList);
+                  Navigator.of(context).pop();
+                  showMatchArbreDialog(context, tournament, tournamentRef, value, selectedPlayer2);
+                },
+              ),
+              const SizedBox(height: 10),
+              _buildPlayerDropdown(
+                context,
+                playerList,
+                selectedPlayer2,
+                (value) {
+                  selectedPlayer2 = value!;
+                  selectedPlayer1 = retrievePlayer(selectedPlayer2, tournament.finalMatchList);
+                  Navigator.of(context).pop();
+                  showMatchArbreDialog(context, tournament, tournamentRef, selectedPlayer1, value);
+                },
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: scoreController,
+                decoration: InputDecoration(labelText: 'score_input'.tr()),
+              ),
+            ],
+          ),
+          actions: [
+            InkWell(
+              onTap: () async { //TODO la suite ici!!!!!
+                // Traitez les résultats ici
+               /* DatabaseReference selectedPouleRef = tournamentRef
+                    .child(tournament.name)
+                    .child('pouleList')
+                    .child(selectedPoule);
+
+                bool matchExists = await checkMatchExists(
+                    selectedPlayer1, selectedPlayer2, selectedPouleRef);
+
+                if (matchExists) {
+                  String errorMessage = tr('matchAlreadyPlayed',args: [selectedPlayer1, selectedPlayer2],);
+                  showErrorDialog(context, errorMessage);
+                } else {
+                  if (isValidScoreFormat(scoreController.text)) {
+                    MatchTournament newMatch = MatchTournament(
+                      player1: selectedPlayer1,
+                      player2: selectedPlayer2,
+                      score: scoreController.text,
+                    );
+                    updateScore(selectedPouleRef, newMatch);
+                    Navigator.of(context).pop();
+                  } else {
+                    showErrorDialog(context, 'Le format du score est incorrect. Utilisez le format Xi-Yi;Xi+1-Yi+1;...');
+                  }
+                }*/
+              },
+              child: const Text('Valider'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String retrievePlayer(String selectedPlayer, EndTournament tournament) {
+    String player = "";
+    if (hasNotEmptyElements(tournament.quarterFinalList)) {
+      for (MatchTournament match in tournament.quarterFinalList) {
+        if(match.player1 == selectedPlayer) {
+          player = match.player2;
+          continue;
+        } else if (match.player2 == selectedPlayer) {
+          player = match.player1;
+          continue;
+        }
+      }
+    } else if (hasNotEmptyElements(tournament.semiFinalist)) {
+      for (MatchTournament match in tournament.semiFinalist) {
+        if(match.player1 == selectedPlayer) {
+          player = match.player2;
+          continue;
+        } else if (match.player2 == selectedPlayer) {
+          player = match.player1;
+          continue;
+        }
+      }
+    } else if (tournament.finalMatch.player1 == selectedPlayer) {
+      player = tournament.finalMatch.player2;
+
+    } else {
+      player = tournament.finalMatch.player1;
+
+    }
+    return player;
+  }
+
+
+  Widget _buildArbreDeDeroulementTab(BuildContext context) {
+    final tournamentRef = FirebaseDatabase.instance.ref().child("tournois");
     return Column(
       children: [
+        ElevatedButton(
+          child: Text("result_match_input".tr()),
+          onPressed: () => showMatchArbreDialog(
+            context,
+            tournament,
+            tournamentRef,
+            "",
+            "",
+          ),
+        ),
+
+
         Expanded(
           child: InteractiveViewer(
             constrained: false,
@@ -577,22 +734,15 @@ Widget _buildMatches(List<MatchTournament> matchList) {
   }
 
   Widget rectangleWidget(String a) {
-    return InkWell( //TODO:  check if Ikwell is necessary
-      onTap: () {
-        if (kDebugMode) {
-          print('clicked');
-        }
-      },
-      child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(4),
-            boxShadow: [
-              BoxShadow(color: Colors.blue[100]!, spreadRadius: 1),
-            ],
-          ),
-          child: Text(a)),
-    );
+    return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(4),
+          boxShadow: [
+            BoxShadow(color: Colors.blue[100]!, spreadRadius: 1),
+          ],
+        ),
+        child: Text(a));
   }
 
   Graph createTournamentTree(EndTournament endTournament) {
@@ -635,11 +785,13 @@ Widget _buildMatches(List<MatchTournament> matchList) {
 
     graph.addEdge(winnerNode, finalPlayer1Node);
     graph.addEdge(winnerNode, finalPlayer2Node);
+    
 
     graph.addEdge(finalPlayer1Node, semiPlayer1Node);
     graph.addEdge(finalPlayer1Node, semiPlayer2Node);
     graph.addEdge(finalPlayer2Node, semiPlayer3Node);
     graph.addEdge(finalPlayer2Node, semiPlayer4Node);
+    
 
     graph.addEdge(semiPlayer1Node, quarterPlayer1Node);
     graph.addEdge(semiPlayer1Node, quarterPlayer2Node);
@@ -652,12 +804,19 @@ Widget _buildMatches(List<MatchTournament> matchList) {
     return graph;
   }
 
+  bool hasNotEmptyElements(List<MatchTournament> list) {
+    for(MatchTournament currentMatch in list) {
+      if (currentMatch.score.isEmpty ) return true;
+    }
+    return false;
+  }
+
 
   TournamentNode getTournamentNode(int id, EndTournament endTournament, int index, TournamentPhase phase, bool player1,) {
     switch (phase) {
       case TournamentPhase.quart:
         if (endTournament.quarterFinalList.isEmpty) {
-          return TournamentNode(id, "<player $id>");
+          return TournamentNode(id, "");
         }
         if (player1) {
           return TournamentNode(
@@ -668,7 +827,7 @@ Widget _buildMatches(List<MatchTournament> matchList) {
         }
       case TournamentPhase.semi:
         if (endTournament.semiFinalist.isEmpty) {
-          return TournamentNode(id, "<player $index>");
+          return TournamentNode(id, "");
         }
         if (player1) {
           return TournamentNode(id, endTournament.semiFinalist[index].player1);
