@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
-import 'package:mockito/mockito.dart';
 import 'package:tournament_management/models/match.dart';
 import 'package:tournament_management/models/tournament.dart';
 import 'package:tournament_management/pages/detail_tournament/detail_tournament_presenter.dart';
