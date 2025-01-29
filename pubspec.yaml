@@ -34,6 +34,8 @@ dependency_overrides:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  mockito: ^5.4.2 # Pour simuler des objets dans vos tests unitaires
+  build_runner: ^2.4.6 # Nécessaire pour générer des mocks
 
 flutter:
   uses-material-design: true

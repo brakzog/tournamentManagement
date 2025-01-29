@@ -80,7 +80,7 @@ Widget _buildPoolMatchesPage(BuildContext context) {
       children: [
         if (shouldDisplayStartButton) _buildStartTournamentButton(),
         if (shouldDisplayStartButton) _buildParticipantList(),
-        if (shouldDisplayPouleSelector) _buildPouleSelector(),
+        if (shouldDisplayPouleSelector) buildPouleSelector(),
         if (shouldDisplayPouleSelector) _buildRankingSection(),
         const SizedBox(height: 16.0),
         _buildMatchListSection(matchList),
@@ -126,7 +126,7 @@ Widget _buildParticipantList() {
 }
 
 
-Widget _buildPouleSelector() {
+Widget buildPouleSelector() {
   List<Poule> sortedPoules = List.from(tournament.pouleList);
   sortedPoules.sort((a, b) => a.name.compareTo(b.name));
   return Row(
