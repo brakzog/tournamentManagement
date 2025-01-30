@@ -78,13 +78,9 @@ jobs:
         run: |
           sudo gem install cocoapods
           cd ios
-          pod install --repo-update
-      - name: Update CocoaPods dependencies
-        run: |
-          cd ios
           pod repo update
           pod update Firebase/CoreOnly
-
+          pod install --repo-update
       - name: Set up Xcode
         run: sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
 
