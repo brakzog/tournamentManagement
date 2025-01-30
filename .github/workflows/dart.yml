@@ -79,7 +79,7 @@ jobs:
           sudo gem install cocoapods
           cd ios
           pod repo update
-          pod update Firebase/CoreOnly AppAuth
+          pod update Firebase/CoreOnly AppAuth GoogleSignIn
           pod install --repo-update
       - name: Set up Xcode
         run: sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
