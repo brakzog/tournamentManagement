@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>77372019755-n0l3f1cvlsijh80nkcv3kikc2eu1enhj.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.77372019755-n0l3f1cvlsijh80nkcv3kikc2eu1enhj</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>77372019755-b6p5dhrmmkhrb8fsnn3l2tf842n213cj.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyBpmEI04rGgHyoREIchZrTJVv0KUXvwMd4</string>
+	<key>GCM_SENDER_ID</key>
+	<string>77372019755</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.jro.tournament</string>
+	<key>PROJECT_ID</key>
+	<string>gestion-tournoi</string>
+	<key>STORAGE_BUCKET</key>
+	<string>gestion-tournoi.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:77372019755:ios:bbd6f9ec77883df141466e</string>
+	<key>DATABASE_URL</key>
+	<string>https://gestion-tournoi-default-rtdb.europe-west1.firebasedatabase.app</string>
+</dict>
+</plist>
