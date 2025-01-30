@@ -58,7 +58,7 @@ jobs:
             build/app/outputs/flutter-apk/app-release.apk
             build/app/outputs/bundle/release/app-release.aab
 
-    build-ios:
+  build-ios:
       name: Build iOS
       runs-on: macos-latest  # Xcode est obligatoire pour iOS
 
