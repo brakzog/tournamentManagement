@@ -59,36 +59,46 @@ jobs:
             build/app/outputs/bundle/release/app-release.aab
 
   build-ios:
-      name: Build iOS
-      runs-on: macos-latest  # Xcode est obligatoire pour iOS
+    name: Build iOS
+    runs-on: macos-latest  # Xcode obligatoire pour iOS
 
-      steps:
-        - name: Checkout repository
-          uses: actions/checkout@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-        - name: Setup Flutter
-          uses: subosito/flutter-action@v2
-          with:
-            flutter-version: 3.27.3  # Remplacez par votre version
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.27.3  # Remplace avec ta version
 
-        - name: Install dependencies
-          run: flutter pub get
+      - name: Install dependencies
+        run: flutter pub get
 
-        - name: Set up Xcode
-          run: sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
+      - name: Install CocoaPods
+        run: |
+          sudo gem install cocoapods
+          cd ios
+          pod install --repo-update
 
-        - name: Build iOS
-          run: flutter build ios --release --no-codesign
+      - name: Set up Xcode
+        run: sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
 
-        - name: Archive iOS Build
-          run: |
-            mkdir -p build/ios
-            mv build/ios/iphoneos build/ios/ios-release
+      - name: Build iOS (Flutter)
+        run: flutter build ios --release --no-codesign
 
-        - name: Upload iOS Build
-          uses: actions/upload-artifact@v3
-          with:
-            name: ios-build
-            path: build/ios/ios-release
-      
+      - name: Archive iOS App
+        run: |
+          mkdir -p build/ios
+          cd ios
+          xcodebuild archive \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -archivePath ../build/ios/Runner.xcarchive \
+            CODE_SIGNING_ALLOWED=NO
 
+      - name: Upload iOS Archive
+        uses: actions/upload-artifact@v3
+        with:
+          name: ios-archive
+          path: build/ios/Runner.xcarchive
