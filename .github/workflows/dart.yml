@@ -28,3 +28,67 @@ jobs:
       - name: Run tests
         run: flutter test
 
+  build-android:
+    name: Build APK & AAB
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.27.3  # Remplacez par votre version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Build AAB (Play Store)
+        run: flutter build appbundle --release
+
+      - name: Upload APK & AAB
+        uses: actions/upload-artifact@v3
+        with:
+          name: android-build
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
+
+    build-ios:
+      name: Build iOS
+      runs-on: macos-latest  # Xcode est obligatoire pour iOS
+
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+
+        - name: Setup Flutter
+          uses: subosito/flutter-action@v2
+          with:
+            flutter-version: 3.27.3  # Remplacez par votre version
+
+        - name: Install dependencies
+          run: flutter pub get
+
+        - name: Set up Xcode
+          run: sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
+
+        - name: Build iOS
+          run: flutter build ios --release --no-codesign
+
+        - name: Archive iOS Build
+          run: |
+            mkdir -p build/ios
+            mv build/ios/iphoneos build/ios/ios-release
+
+        - name: Upload iOS Build
+          uses: actions/upload-artifact@v3
+          with:
+            name: ios-build
+            path: build/ios/ios-release
+      
+
