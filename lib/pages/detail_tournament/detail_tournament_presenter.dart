@@ -407,6 +407,16 @@ Widget _buildMatches(List<MatchTournament> matchList) {
     });
   }
 
+void updateScoreGraph(DatabaseReference endTournamentRef, MatchTournament newMatch) async {
+    await viewModel.updateMatchGraph(endTournamentRef, newMatch);
+
+    setState(() {
+      tournament.updateFinaleMatch(newMatch);
+    });
+  }
+
+
+
   void updateGraph() {
     // Calculez les classements des poules
     Map<String, List<String>> pouleRankings = {};
@@ -626,32 +636,20 @@ void showMatchArbreDialog(
           ),
           actions: [
             InkWell(
-              onTap: () async { //TODO la suite ici!!!!!
-                // Traitez les résultats ici
-               /* DatabaseReference selectedPouleRef = tournamentRef
-                    .child(tournament.name)
-                    .child('pouleList')
-                    .child(selectedPoule);
+              onTap: () async { 
 
-                bool matchExists = await checkMatchExists(
-                    selectedPlayer1, selectedPlayer2, selectedPouleRef);
+                
+                
+              
 
-                if (matchExists) {
-                  String errorMessage = tr('matchAlreadyPlayed',args: [selectedPlayer1, selectedPlayer2],);
-                  showErrorDialog(context, errorMessage);
+                if(isValidScoreFormat(scoreController.text)){
+                  MatchTournament newMatch = MatchTournament(player1: selectedPlayer1, player2: selectedPlayer2, score: scoreController.text);
+                  DatabaseReference endTournamentRef =  getTournamentRef(newMatch);
+                  updateScoreGraph(endTournamentRef, newMatch);
+                  Navigator.of(context).pop();
                 } else {
-                  if (isValidScoreFormat(scoreController.text)) {
-                    MatchTournament newMatch = MatchTournament(
-                      player1: selectedPlayer1,
-                      player2: selectedPlayer2,
-                      score: scoreController.text,
-                    );
-                    updateScore(selectedPouleRef, newMatch);
-                    Navigator.of(context).pop();
-                  } else {
-                    showErrorDialog(context, 'Le format du score est incorrect. Utilisez le format Xi-Yi;Xi+1-Yi+1;...');
-                  }
-                }*/
+                  showErrorDialog(context, 'score_format_incorrect'.tr());
+                }
               },
               child: const Text('Valider'),
             ),
@@ -659,6 +657,23 @@ void showMatchArbreDialog(
         );
       },
     );
+  }
+
+  DatabaseReference getTournamentRef(MatchTournament match) {
+    final tournamentRef = FirebaseDatabase.instance.ref().child("tournois").child(tournament.name);
+    if(tournament.getIndex(tournament.finalMatchList.semiFinalist, match) != -1) {
+      int index = tournament.getIndex(tournament.finalMatchList.semiFinalist, match);
+      return tournamentRef.child("semiFinal").child(index.toString());
+    } else if (tournament.getIndex(tournament.finalMatchList.quarterFinalList, match) != -1) {
+      int index = tournament.getIndex(tournament.finalMatchList.quarterFinalList, match);
+      return tournamentRef.child("quartFinal").child(index.toString());
+
+    } else {
+      
+
+
+      return tournamentRef.child('finalMatch');
+    }
   }
 
   String retrievePlayer(String selectedPlayer, EndTournament tournament) {

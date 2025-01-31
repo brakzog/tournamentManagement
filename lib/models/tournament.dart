@@ -1,4 +1,5 @@
 import 'package:tournament_management/models/end_tournament.dart';
+import 'package:tournament_management/models/match.dart';
 import 'package:tournament_management/models/poule.dart';
 
 class Tournament {
@@ -49,7 +50,28 @@ class Tournament {
         (element.player1 == player2 && element.player2 == player1));
     findPoule.matchList[index].score = score;
   }
+
+
+  void updateFinaleMatch(MatchTournament match) {
+    if ((match.player1 == finalMatchList.finalMatch.player1 && match.player2 == finalMatchList.finalMatch.player2) ||
+        (match.player2 ==finalMatchList.finalMatch.player1 && match.player1 == finalMatchList.finalMatch.player2)) {
+        finalMatchList.finalMatch.score = match.score;
+    } else if( getIndex(finalMatchList.semiFinalist, match)!= -1) {
+        finalMatchList.semiFinalist[getIndex(finalMatchList.semiFinalist, match)].score = match.score;
+
+    } else if (getIndex(finalMatchList.quarterFinalList, match) != -1) {
+      finalMatchList.quarterFinalList[getIndex(finalMatchList.quarterFinalList, match)].score = match.score;
+    }
+  }
+
+  int getIndex (List<MatchTournament> list, MatchTournament match) {
+    return list.indexWhere((element) =>
+              (element.player1 == match.player1 && element.player2 == match.player2) ||
+              (element.player2 == match.player1 && element.player1 == match.player2));
+  }
 }
+
+
 
 class TournamentDate {
   String? beginingDate;

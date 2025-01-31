@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:tournament_management/models/match.dart';
 import 'package:tournament_management/models/poule.dart';
 import 'package:tournament_management/models/tournament.dart';
+import 'package:tournament_management/utils.dart';
 
 class DetailTournamentViewModel extends ChangeNotifier{
 
@@ -82,6 +83,60 @@ class DetailTournamentViewModel extends ChangeNotifier{
       poulesRef.child(poule.name).set(pouleData);
     }
   }
+
+  Future<void> updateMatchGraph(DatabaseReference endTournamentRef, MatchTournament newMatch) async {
+    final snapshot = await endTournamentRef.once();
+
+    if (snapshot.snapshot.value != null) {
+      Map<dynamic, dynamic> matches = snapshot.snapshot.value as Map<dynamic, dynamic>;
+      matches["score"] = newMatch.score;
+      try { 
+        await endTournamentRef.update(newMatch.toJson());
+        print("Match $newMatch mis à jour");
+        updateNextStep(newMatch, endTournamentRef);
+      } catch (e) {
+                  print("Erreur lors de la mise à jour du match : $e");
+      }
+    }
+  }
+
+  Future<void> updateNextStep(MatchTournament match, DatabaseReference ref) async {
+    final winner = getWinner(match);
+    if(ref.parent?.key == "quartFinal") {
+      prepareSemiFinal(ref, match, winner);
+    } else if(ref.parent?.key == "semiFinal") {
+      prepareFinal(ref, match, winner);
+    } 
+  }
+
+  void prepareFinal(DatabaseReference ref, MatchTournament match, String winner) {
+    final tournamentRef = FirebaseDatabase.instance.ref().child("tournois").child(tournament!.name);
+    final index = tournament?.getIndex(tournament!.finalMatchList.semiFinalist, match);
+    int newIndex = index! < 2 ? 0 : 1;
+      
+    if (tournament?.finalMatchList.finalMatch.player1.isEmpty == true) {
+      tournament?.finalMatchList.finalMatch.player1 = winner;
+      tournamentRef.child("finalMatch").update(tournament!.finalMatchList.finalMatch.toJson());
+    } else {
+      tournament?.finalMatchList.semiFinalist[newIndex].player2 = winner;
+      tournamentRef.child("finalMatch").update(tournament!.finalMatchList.finalMatch.toJson());
+    }
+  }
+
+  void prepareSemiFinal(DatabaseReference ref, MatchTournament match, String winner) {
+    final tournamentRef = FirebaseDatabase.instance.ref().child("tournois").child(tournament!.name);
+    final index = tournament?.getIndex(tournament!.finalMatchList.quarterFinalList, match);
+    int newIndex = index! < 2 ? 0 : 1;
+      
+    if (tournament?.finalMatchList.semiFinalist[newIndex].player1.isEmpty == true) {
+      tournament?.finalMatchList.semiFinalist[newIndex].player1 = winner;
+      tournamentRef.child("semiFinal").child(newIndex.toString()).child("player1").update(tournament!.finalMatchList.semiFinalist[index].toJson());
+    } else {
+      tournament?.finalMatchList.semiFinalist[newIndex].player2 = winner;
+      tournamentRef.child("semiFinal").child(newIndex.toString()).child("player2").update(tournament!.finalMatchList.semiFinalist[index].toJson());
+    }
+  }
+  
 
 
   Future<void> updateMatch(DatabaseReference selectedPouleRef, MatchTournament newMatch) async {

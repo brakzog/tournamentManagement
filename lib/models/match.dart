@@ -1,6 +1,6 @@
 class MatchTournament {
-  final String player1; // can also be a name for team player
-  final String player2;
+  String player1; // can also be a name for team player
+  String player2;
   String score;
 
   MatchTournament({
