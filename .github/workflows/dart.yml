@@ -51,7 +51,7 @@ jobs:
         run: flutter build appbundle --release
 
       - name: Upload APK & AAB
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: android-build
           path: |
@@ -99,7 +99,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO
 
       - name: Upload iOS Archive
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ios-archive
           path: build/ios/Runner.xcarchive
