@@ -102,18 +102,29 @@ jobs:
           echo "Decoding iOS certificate..."
           echo "$IOS_CERTIFICATE" | base64 --decode > /tmp/ios_certificate.p12
 
-  
+          # Vérifier si le fichier .p12 existe après le décodage
           ls -l /tmp/ios_certificate.p12
-          echo "Creating keychain..."
-          security create-keychain -p "$KEYCHAIN_PASSWORD" ios-build.keychain
 
+          # Vérifier si le keychain existe déjà
+          if security list-keychains | grep -q "ios-build.keychain"; then
+            echo "Keychain ios-build.keychain already exists. Skipping creation."
+          else
+            echo "Creating keychain..."
+            security create-keychain -p "$KEYCHAIN_PASSWORD" ios-build.keychain
+          fi
+
+          # Importer le certificat .p12 dans le keychain
           echo "Importing certificate into keychain..."
           security import /tmp/ios_certificate.p12 -k ios-build.keychain -P "$IOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -A
 
+          # Vérifier si le certificat a bien été importé
           echo "Verifying certificate import..."
           security find-identity -v -p codesigning
 
+          # Définir ce keychain comme le keychain par défaut
           security list-keychains -s ios-build.keychain
+
+          # Déverrouiller le keychain pour les processus suivants
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" ios-build.keychain
 
       - name: Install dependencies
