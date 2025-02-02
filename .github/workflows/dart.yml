@@ -88,12 +88,12 @@ jobs:
           echo "$IOS_CERTIFICATE" | base64 --decode > /tmp/ios_certificate.p12
           echo "$IOS_CERTIFICATE_PASSWORD" | tee /tmp/cert_password.txt
 
+
       - name: Setup keychain and install certificates
         run: |
           security create-keychain -p "$KEYCHAIN_PASSWORD" ios-build.keychain
           security import /tmp/ios_certificate.p12 -k ~/Library/Keychains/ios-build.keychain -P "$(cat /tmp/cert_password.txt)" -T /usr/bin/codesign
           security set-keychain-settings -t 3600 -u ios-build.keychain
-          
 
       - name: Install dependencies
         run: flutter pub get
