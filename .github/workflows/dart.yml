@@ -107,6 +107,9 @@ jobs:
       - name: Setup Git Credentials
         run: git config --global url."https://${{ secrets.GIT_AUTH_TOKEN }}@github.com/".insteadOf "https://github.com/"
 
+      - name: Set Match Password
+        run: echo "MATCH_PASSWORD=${{ secrets.MATCH_PASSWORD }}" >> $GITHUB_ENV
+
 
       - name: Run Fastlane Match
         run: fastlane match appstore --git_url "https://github.com/brakzog/ios_certif.git"
