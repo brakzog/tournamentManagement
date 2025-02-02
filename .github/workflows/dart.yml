@@ -101,12 +101,16 @@ jobs:
         with:
           ruby-version: 2.7
 
-      - name: Install dependencies
-        run: |
-          gem install fastlane
+      - name: Install Bundler
+        run: gem install bundler  # S'assurer que Bundler est installé
+
+      - name: Install Bundler dependencies
+        run: bundle install
+
+      - name: Run Fastlane Match
+        run: bundle exec fastlane match appstore
 
       - name: Build and sign IPA with Fastlane
         run: |
-          cd ios
-          fastlane beta
-          
+            cd ios
+            bundle exec fastlane beta  # Utiliser bundle exec pour éviter les conflits
