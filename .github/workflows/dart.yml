@@ -84,51 +84,36 @@ jobs:
           flutter-version: 3.27.3  # Remplace avec ta version
 
        # Décoder le certificat .p12 et le sauvegarder temporairement
-      - name: Decode the certificate .p12
+      - name: Decode iOS certificate and verify content
         run: |
-          echo "$IOS_CERTIFICATE" | base64 --decode > /tmp/ios_certificate.p12
-          ls -l /tmp/ios_certificate.p12  # Afficher les détails du fichier pour vérification
-
-  # Créer un keychain sécurisé en utilisant la variable KEYCHAIN_PASSWORD
-      - name: Create a secure keychain
-        run: |
-          security create-keychain -p "$KEYCHAIN_PASSWORD" ios-build.keychain
-          security list-keychains -s ios-build.keychain  # Vérifier que le keychain a été créé
-
-  # Importer le certificat .p12 dans le keychain
-      - name: Import certificate into keychain
-        run: |
-          # Décoder le certificat .p12 et le sauvegarder temporairement
           echo "Decoding iOS certificate..."
           echo "$IOS_CERTIFICATE" | base64 --decode > /tmp/ios_certificate.p12
-
-          # Vérification du fichier .p12
           echo "Verifying .p12 file content..."
-          ls -l /tmp/ios_certificate.p12
-          cat /tmp/ios_certificate.p12
+          ls -l /tmp/ios_certificate.p12  # Vérification de la taille et des permissions
+          cat /tmp/ios_certificate.p12  # Affiche le contenu pour débogage (attention, il peut être illisible)
 
-
-          # Vérifier si le keychain existe déjà
+      - name: Create and unlock keychain
+        run: |
           if security list-keychains | grep -q "ios-build.keychain"; then
             echo "Keychain ios-build.keychain already exists. Skipping creation."
           else
             echo "Creating keychain..."
             security create-keychain -p "$KEYCHAIN_PASSWORD" ios-build.keychain
           fi
+          
+          echo "Unlocking keychain..."
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" ios-build.keychain
 
-          # Importer le certificat .p12 dans le keychain
+      - name: Import certificate into keychain
+        run: |
           echo "Importing certificate into keychain..."
           security import /tmp/ios_certificate.p12 -k ios-build.keychain -P "$IOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -A
 
-          # Vérifier si le certificat a bien été importé
+      - name: Verify certificate import
+        run: |
           echo "Verifying certificate import..."
           security find-identity -v -p codesigning
-
-          # Définir ce keychain comme le keychain par défaut
-          security list-keychains -s ios-build.keychain
-
-          # Déverrouiller le keychain pour les processus suivants
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" ios-build.keychain
+          
 
       - name: Install dependencies
         run: flutter pub get
