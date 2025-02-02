@@ -83,38 +83,6 @@ jobs:
         with:
           flutter-version: 3.27.3  # Remplace avec ta version
 
-       # Décoder le certificat .p12 et le sauvegarder temporairement
-      - name: Decode iOS certificate and verify content
-        run: |
-          echo "Decoding iOS certificate..."
-          echo "$IOS_CERTIFICATE" | base64 --decode > /tmp/ios_certificate.p12
-          echo "Verifying .p12 file content..."
-          ls -l /tmp/ios_certificate.p12  # Vérification de la taille et des permissions
-          cat /tmp/ios_certificate.p12  # Affiche le contenu pour débogage (attention, il peut être illisible)
-
-      - name: Create and unlock keychain
-        run: |
-          if security list-keychains | grep -q "ios-build.keychain"; then
-            echo "Keychain ios-build.keychain already exists. Skipping creation."
-          else
-            echo "Creating keychain..."
-            security create-keychain -p "$KEYCHAIN_PASSWORD" ios-build.keychain
-          fi
-          
-          echo "Unlocking keychain..."
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" ios-build.keychain
-
-      - name: Import certificate into keychain
-        run: |
-          echo "Importing certificate into keychain..."
-          security import /tmp/ios_certificate.p12 -k ios-build.keychain -P "$IOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -A
-
-      - name: Verify certificate import
-        run: |
-          echo "Verifying certificate import..."
-          security find-identity -v -p codesigning
-          
-
       - name: Install dependencies
         run: flutter pub get
 
@@ -128,22 +96,17 @@ jobs:
       - name: Set up Xcode
         run: sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
 
-      - name: Build iOS (Flutter)
-        run: flutter build ios --release --no-codesign
-
-      - name: Archive iOS App
-        run: |
-          mkdir -p build/ios
-          cd ios
-          xcodebuild archive \
-            -workspace Runner.xcworkspace \
-            -scheme Runner \
-            -configuration Release \
-            -archivePath ../build/ios/Runner.xcarchive \
-            CODE_SIGNING_ALLOWED=NO
-
-      - name: Upload iOS Archive
-        uses: actions/upload-artifact@v4
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
         with:
-          name: ios-archive
-          path: build/ios/Runner.xcarchive
+          ruby-version: 2.7
+
+      - name: Install dependencies
+        run: |
+          gem install fastlane
+
+      - name: Build and sign IPA with Fastlane
+        run: |
+          cd ios
+          fastlane beta
+          
