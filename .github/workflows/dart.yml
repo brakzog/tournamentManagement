@@ -83,17 +83,22 @@ jobs:
         with:
           flutter-version: 3.27.3  # Remplace avec ta version
 
-      - name: Decrypt iOS Certificate
+      - name: Decode .p12 certificate and import it to Keychain
         run: |
+          # Décoder le certificat .p12 et le sauvegarder temporairement
           echo "$IOS_CERTIFICATE" | base64 --decode > /tmp/ios_certificate.p12
-          echo "$IOS_CERTIFICATE_PASSWORD" | tee /tmp/cert_password.txt
-
-
-      - name: Setup keychain and install certificates
-        run: |
+          
+          # Créer un keychain sécurisé en utilisant la variable KEYCHAIN_PASSWORD
           security create-keychain -p "$KEYCHAIN_PASSWORD" ios-build.keychain
-          security import /tmp/ios_certificate.p12 -k ~/Library/Keychains/ios-build.keychain -P "$(cat /tmp/cert_password.txt)" -T /usr/bin/codesign
-          security set-keychain-settings -t 3600 -u ios-build.keychain
+          
+          # Importer le certificat .p12 dans le keychain
+          security import /tmp/ios_certificate.p12 -k ios-build.keychain -P "$IOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+
+          # Définir ce keychain comme le keychain par défaut
+          security list-keychains -s ios-build.keychain
+          
+          # Déverrouiller le keychain pour les processus suivants
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" ios-build.keychain
 
       - name: Install dependencies
         run: flutter pub get
