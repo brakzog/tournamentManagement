@@ -16,17 +16,22 @@
 default_platform(:ios)
 
 platform :ios do
-  desc "Push a new beta build to TestFlight"
-  lane :beta do
-    build_app(workspace: "Runner.xcworkspace", scheme: "Runner")
-    upload_to_testflight
+  lane :setup_signing do
+    match(type: "appstore")
   end
 
   lane :build do
-    match(type: "appstore")
-    gym(scheme: "Runner", output_directory: "./build", output_name: "Runner.ipa")
+    setup_signing
+
+    gym(
+      scheme: "Runner",
+      output_directory: "./build",
+      output_name: "Runner.ipa",
+      export_method: "app-store"
+    )
   end
 
   lane :upload do
+    build
     pilot(ipa: "./build/Runner.ipa")
 end
