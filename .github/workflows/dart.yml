@@ -102,8 +102,11 @@ jobs:
           echo "Decoding iOS certificate..."
           echo "$IOS_CERTIFICATE" | base64 --decode > /tmp/ios_certificate.p12
 
-          # Vérifier si le fichier .p12 existe après le décodage
+          # Vérification du fichier .p12
+          echo "Verifying .p12 file content..."
           ls -l /tmp/ios_certificate.p12
+          cat /tmp/ios_certificate.p12
+
 
           # Vérifier si le keychain existe déjà
           if security list-keychains | grep -q "ios-build.keychain"; then
