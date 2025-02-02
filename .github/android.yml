@@ -1,0 +1,11 @@
+- name: Decode Keystore
+  run: |
+    echo "${{ secrets.ANDROID_KEYSTORE }}" | base64 --decode > android/app/keystore.jks
+
+- name: Create key.properties
+  run: |
+    echo "storeFile=keystore.jks" > android/key.properties
+    echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" >> android/key.properties
+    echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+    echo "keyAlias"=${{ secrets.KEY_ALIAS}}" >> android/key.properties
+
