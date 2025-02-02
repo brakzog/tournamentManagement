@@ -99,10 +99,11 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 2.7
+          ruby-version: 3.1
 
-      - name: Install Bundler dependencies
+      - name: Install Fastlane
         run: gem install fastlane
+
 
       - name: Run Fastlane Match
         run: fastlane match appstore
