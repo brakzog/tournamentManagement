@@ -83,22 +83,30 @@ jobs:
         with:
           flutter-version: 3.27.3  # Remplace avec ta version
 
-      - name: Decode .p12 certificate and import it to Keychain
+       # Décoder le certificat .p12 et le sauvegarder temporairement
+      - name: Decode the certificate .p12
         run: |
-          # Décoder le certificat .p12 et le sauvegarder temporairement
           echo "$IOS_CERTIFICATE" | base64 --decode > /tmp/ios_certificate.p12
-          
-          # Créer un keychain sécurisé en utilisant la variable KEYCHAIN_PASSWORD
-          security create-keychain -p "$KEYCHAIN_PASSWORD" ios-build.keychain
-          
-          # Importer le certificat .p12 dans le keychain
-          security import /tmp/ios_certificate.p12 -k ios-build.keychain -P "$IOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          ls -l /tmp/ios_certificate.p12  # Afficher les détails du fichier pour vérification
 
-          # Définir ce keychain comme le keychain par défaut
+  # Créer un keychain sécurisé en utilisant la variable KEYCHAIN_PASSWORD
+      - name: Create a secure keychain
+        run: |
+          security create-keychain -p "$KEYCHAIN_PASSWORD" ios-build.keychain
+          security list-keychains -s ios-build.keychain  # Vérifier que le keychain a été créé
+
+  # Importer le certificat .p12 dans le keychain
+      - name: Import certificate into keychain
+        run: |
+          security import /tmp/ios_certificate.p12 -k ios-build.keychain -P "$IOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security find-identity -v -p codesigning  # Vérifier que le certificat a bien été importé
+
+  # Définir ce keychain comme le keychain par défaut
+      - name: Set keychain as default
+        run: |
           security list-keychains -s ios-build.keychain
-          
-          # Déverrouiller le keychain pour les processus suivants
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" ios-build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" ios-build.keychain  # Déverrouiller le keychain
+
 
       - name: Install dependencies
         run: flutter pub get
