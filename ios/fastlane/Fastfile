@@ -34,4 +34,5 @@ platform :ios do
   lane :upload do
     build
     pilot(ipa: "./build/Runner.ipa")
+  end
 end
