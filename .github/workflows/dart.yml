@@ -110,8 +110,7 @@ jobs:
       - name: Set environment variables for Fastlane
         run: |
        
-          echo "FASTLANE_USER=milorad@hotmail.fr" >> $GITHUB_ENV
-          echo "FASTLANE_PASSWORD=oaar-aesy-peda-zyjr" >> $GITHUB_ENV
+          echo "FASTLANE_SESSION=${{ secrets.FASTLANE_SESSION }}" >> $GITHUB_ENV
           echo "MATCH_PASSWORD=${{ secrets.MATCH_PASSWORD }}" >> $GITHUB_ENV
 
 
