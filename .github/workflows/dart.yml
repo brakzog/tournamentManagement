@@ -117,6 +117,34 @@ jobs:
           echo "FASTLANE_PASSWORD=${{ secrets.FASTLANE_PASSWORD }}" >> $GITHUB_ENV
           echo "MATCH_PASSWORD=${{ secrets.MATCH_PASSWORD }}" >> $GITHUB_ENV
 
+      - name: Check if Fastlane secrets are set
+        run: |
+          if [ -z "${{ secrets.FASTLANE_USER }}" ]; then 
+            echo "❌ FASTLANE_USER is NOT set!";
+          else 
+            echo "✅ FASTLANE_USER is set!";
+          fi
+    
+          if [ -z "${{ secrets.FASTLANE_PASSWORD }}" ]; then 
+            echo "❌ FASTLANE_PASSWORD is NOT set!";
+          else 
+            echo "✅ FASTLANE_PASSWORD is set!";
+          fi
+
+      - name: Debug Fastlane Env
+        run: env | grep FASTLANE
+
+      - name: Check password format
+        run: |
+          echo "Password length: ${#FASTLANE_PASSWORD}"
+
+      - name: Fix password format (if needed)
+        run: |
+          export FIXED_PASSWORD=$(echo "${FASTLANE_PASSWORD}" | tr -d '-')
+          echo  "Fixed password length: ${#FIXED_PASSWORD}"
+
+      
+
 
 
 
