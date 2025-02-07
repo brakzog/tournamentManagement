@@ -35,4 +35,20 @@ platform :ios do
     build
     pilot(ipa: "./build/Runner.ipa")
   end
+
+  lane :release do
+    app_store_connect_api_key(
+      key_json_path: "./fastlane/api_key.json"
+    )
+  
+    build_app(scheme: "Runner")
+  
+    upload_to_app_store(
+      skip_app_version_update: true,  # Évite de modifier la version sur l'App Store
+      submit_for_review: false        # Ne soumet pas pour validation
+    )
+  end
+  
+
+  
 end
