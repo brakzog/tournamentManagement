@@ -123,7 +123,7 @@ jobs:
       - name: Setup match provisioning profiles
         env:
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }} # Défini un mot de passe dans GitHub Secrets
-        run: fastlane match appstore --git_url "git@github.com:brakzog/ios_certif.git"
+        run: fastlane release #match appstore --git_url "git@github.com:brakzog/ios_certif.git"
 
 
       - name: Build and upload app store
