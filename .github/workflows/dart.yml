@@ -119,6 +119,7 @@ jobs:
           APP_STORE_ISSUER_ID: ${{ secrets.APP_STORE_ISSUER_ID }}
           APP_STORE_PRIVATE_KEY: ${{ secrets.APP_STORE_PRIVATE_KEY }}
         run: |
+          mkdir -p fastlane
           echo "{\"key_id\": \"${APP_STORE_KEY_ID}\", \"issuer_id\": \"${APP_STORE_ISSUER_ID}\", \"key\": \"${APP_STORE_PRIVATE_KEY}\"}" > fastlane/api_key.json
 
       - name: Build and Upload to App Store
