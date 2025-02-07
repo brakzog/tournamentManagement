@@ -37,6 +37,7 @@ platform :ios do
   end
 
   lane :release do
+    match(type: "appstore")  # Récupère le provisioning profile
     app_store_connect_api_key(
       key_id: ENV["APP_STORE_KEY_ID"],
       issuer_id: ENV["APP_STORE_ISSUER_ID"],
