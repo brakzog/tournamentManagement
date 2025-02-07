@@ -45,9 +45,23 @@ platform :ios do
     match(type: "appstore",
           git_url: "git@github.com:brakzog/ios_certif.git",
           readonly: false)# Récupère le provisioning profile
-    puts "Provisioning Profile Mapping: #{ENV['SIGH_PROFILE_TYPE']}"
+    puts "Provisioning Profile Mapping: #{lane_context[SharedValues::SIGH_PROFILE_PATH]}"
+
+    update_code_signing_settings(
+  use_automatic_signing: false,
+  path: "Runner.xcodeproj",
+  team_id: "8F9BW8XX6M",
+  code_sign_identity: "Apple Distribution: Julien Rosati (8F9BW8XX6M)",
+  provisioning_profile_specifier: "match AppStore com.jro.tournament"
+)
     
-    gym
+    gym(
+      export_options: {
+        provisioningProfiles: {
+          "com.jro.tournament" => "match AppStore com.jro.tournament"
+        }
+    }
+)
     upload_to_testflight
   end
   
