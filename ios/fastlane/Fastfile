@@ -45,6 +45,7 @@ platform :ios do
     match(type: "appstore",
           git_url: "git@github.com:brakzog/ios_certif.git",
           readonly: false)# Récupère le provisioning profile
+    puts "Provisioning Profile Mapping: #{ENV['SIGH_PROFILE_TYPE']}"
     
     gym
     upload_to_testflight
