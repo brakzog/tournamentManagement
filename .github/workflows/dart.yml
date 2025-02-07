@@ -124,9 +124,8 @@ jobs:
 
       - name: Build and Upload to App Store
         run: |
-          pwd
-          ls
-          fatlane release
+          cd ios
+          fastlane release
 
 
 
