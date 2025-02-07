@@ -37,20 +37,16 @@ platform :ios do
   end
 
   lane :release do
-    match(type: "appstore")  # Récupère le provisioning profile
     app_store_connect_api_key(
       key_id: ENV["APP_STORE_KEY_ID"],
       issuer_id: ENV["APP_STORE_ISSUER_ID"],
       key_content: ENV["APP_STORE_PRIVATE_KEY"]
     )
-
   
-    build_app(scheme: "Runner")
-  
-    upload_to_app_store(
-      skip_app_version_update: true,  # Évite de modifier la version sur l'App Store
-      submit_for_review: false        # Ne soumet pas pour validation
-    )
+    match(type: "appstore")  # Récupère le provisioning profile
+    
+    gym
+    upload_to_testflight
   end
   
 
