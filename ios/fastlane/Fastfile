@@ -43,7 +43,7 @@ platform :ios do
       key_content: ENV["APP_STORE_PRIVATE_KEY"]
     )
     match(type: "appstore",
-          git_url: "git@github.com:brakzog/ios_certig.git",
+          git_url: "git@github.com:brakzog/ios_certif.git",
           readonly: false)# Récupère le provisioning profile
     
     gym
