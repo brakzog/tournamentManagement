@@ -123,7 +123,10 @@ jobs:
           echo "{\"key_id\": \"${APP_STORE_KEY_ID}\", \"issuer_id\": \"${APP_STORE_ISSUER_ID}\", \"key\": \"${APP_STORE_PRIVATE_KEY}\"}" > fastlane/api_key.json
 
       - name: Build and Upload to App Store
-        run: bundle exec fastlane release
+        run: |
+          pwd
+          ls
+          fatlane release
 
 
 
