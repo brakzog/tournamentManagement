@@ -113,6 +113,12 @@ jobs:
           echo "FASTLANE_SESSION=${{ secrets.FASTLANE_SESSION }}" >> $GITHUB_ENV
           echo "MATCH_PASSWORD=${{ secrets.MATCH_PASSWORD }}" >> $GITHUB_ENV
 
+      - name: Setup match provisioning profiles
+        env:
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }} # Défini un mot de passe dans GitHub Secrets
+        run: fastlane match appstore
+
+
       - name: Build and upload app store
         env:
           APP_STORE_KEY_ID: ${{ secrets.APP_STORE_KEY_ID }}
