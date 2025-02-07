@@ -52,7 +52,7 @@ platform :ios do
   path: "Runner.xcodeproj",
   team_id: "8F9BW8XX6M",
   code_sign_identity: "Apple Distribution: Julien Rosati (8F9BW8XX6M)",
-  provisioning_profile_specifier: "match AppStore com.jro.tournament"
+  profile_name: "match AppStore com.jro.tournament"
 )
     
     gym(
