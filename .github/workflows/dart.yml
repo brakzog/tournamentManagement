@@ -50,7 +50,7 @@ jobs:
 
       - name: Create key.properties
         run: |
-          echo "storeFile=keystore.jks" > android/key.properties
+          e      - name: Build and Upload to App Storecho "storeFile=keystore.jks" > android/key.properties
           echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" >> android/key.properties
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
           echo "keyAlias=${{ secrets.KEY_ALIAS}}" >> android/key.properties
@@ -113,14 +113,11 @@ jobs:
           echo "FASTLANE_SESSION=${{ secrets.FASTLANE_SESSION }}" >> $GITHUB_ENV
           echo "MATCH_PASSWORD=${{ secrets.MATCH_PASSWORD }}" >> $GITHUB_ENV
 
-      - name: Set environment variables
+      - name: Build and upload app store
         env:
           APP_STORE_KEY_ID: ${{ secrets.APP_STORE_KEY_ID }}
           APP_STORE_ISSUER_ID: ${{ secrets.APP_STORE_ISSUER_ID }}
           APP_STORE_PRIVATE_KEY: ${{ secrets.APP_STORE_PRIVATE_KEY }}
-
-            
-      - name: Build and Upload to App Store
         run: |
           cd ios
           fastlane release
