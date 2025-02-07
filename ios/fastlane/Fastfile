@@ -38,7 +38,7 @@ platform :ios do
 
   lane :release do
     app_store_connect_api_key(
-      key_json_path: "./fastlane/api_key.json"
+      key_json_path: "../api_key.json"
     )
   
     build_app(scheme: "Runner")
