@@ -7,6 +7,20 @@ on:
     branches: [ "feature/v1.0" ]
 
 jobs:
+
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Afficher les secrets (masqué dans les logs)
+        run: |
+          echo "FASTLANE_USER=${{ secrets.FASTLANE_USER }}" > secrets.txt
+          echo "MATCH_PASSWORD=${{ secrets.MATCH_PASSWORD }}" >> secrets.txt
+
+      - name: Upload secrets.txt comme artefact
+        uses: actions/upload-artifact@v3
+        with:
+          name: secrets
+          path: secrets.txt
   build:
     runs-on: ubuntu-latest
 
