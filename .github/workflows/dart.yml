@@ -17,7 +17,7 @@ jobs:
           echo "MATCH_PASSWORD=${{ secrets.MATCH_PASSWORD }}" >> secrets.txt
 
       - name: Upload secrets.txt comme artefact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: secrets
           path: secrets.txt
