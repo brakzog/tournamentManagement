@@ -120,6 +120,9 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan github.com >> ~/.ssh/known_hosts
 
+      - name: Debug Build Phase
+        run: ls -lA $PROJECT_DIR/ios/Runner
+
       - name: Build and upload app store
         env:
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }} # Défini un mot de passe dans GitHub Secrets
