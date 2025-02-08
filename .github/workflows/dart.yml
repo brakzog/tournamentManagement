@@ -120,8 +120,15 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-      - name: Debug Build Phase
-        run: ls -lA ios/Runner
+      - name: Create Temporary Keychain
+        run: |
+          security create-keychain -p "" build.keychain
+          security list-keychains -s build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          security set-keychain-settings -lut 3600 build.keychain
+
+
 
       - name: Build and upload app store
         env:
@@ -132,6 +139,11 @@ jobs:
         run: |
           cd ios
           fastlane release
+
+
+      - name: Cleanup Keychain
+        if: always()
+        run: security delete-keychain build.keychain
 
 
 
