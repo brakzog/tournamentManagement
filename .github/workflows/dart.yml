@@ -121,6 +121,14 @@ jobs:
           ssh-keyscan github.com >> ~/.ssh/known_hosts
 
 
+      - name: Debug Xcode logs
+        run: |
+          mkdir -p ~/Library/Logs/gym
+          set -o pipefail && xcodebuild -workspace ios/Runner.xcworkspace \
+          -scheme Runner -destination 'generic/platform=iOS' \
+          -archivePath ~/Library/Developer/Xcode/Archives/Runner.xcarchive \
+          archive | tee ~/Library/Logs/gym/Runner.log | xcbeautify
+
       - name: Build and upload app store
         env:
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }} # Défini un mot de passe dans GitHub Secrets
@@ -131,10 +139,6 @@ jobs:
           cd ios
           fastlane release
 
-
-      - name: Cleanup Keychain
-        if: always()
-        run: security delete-keychain build.keychain
 
 
 
