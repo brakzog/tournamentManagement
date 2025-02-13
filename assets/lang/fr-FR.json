@@ -31,5 +31,6 @@
   "rank": "Classement",
   "success_creation": "Création Réussie!",
   "tournament_created": "Votre tournoi a bien été enregistré!",
-  "score_format_incorrect": "Le format du score est incorrect. Utilisez le format Xi-Yi;Xi+1-Yi+1;..."
+  "score_format_incorrect": "Le format du score est incorrect. Utilisez le format Xi-Yi;Xi+1-Yi+1;...",
+  "valid": "Valider"
 }

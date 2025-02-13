@@ -322,6 +322,10 @@ Widget _buildMatches(List<MatchTournament> matchList) {
                 },
               ),
               const SizedBox(height: 10),
+              //TODO voir la complexité de mettre le format d'affichage du score de la meme facon 
+              //que sur une feuille de match avec des carrés
+
+              
               TextField(
                 controller: scoreController,
                 decoration: InputDecoration(labelText: 'score_input'.tr()),
@@ -331,7 +335,6 @@ Widget _buildMatches(List<MatchTournament> matchList) {
           actions: [
             InkWell(
               onTap: () async {
-                // Traitez les résultats ici
                 DatabaseReference selectedPouleRef = tournamentRef
                     .child(tournament.name)
                     .child('pouleList')
@@ -353,11 +356,11 @@ Widget _buildMatches(List<MatchTournament> matchList) {
                     updateScore(selectedPouleRef, newMatch);
                     Navigator.of(context).pop();
                   } else {
-                    showErrorDialog(context, 'Le format du score est incorrect. Utilisez le format Xi-Yi;Xi+1-Yi+1;...');
+                    showErrorDialog(context, 'score_format_incorrect'.tr());
                   }
                 }
               },
-              child: const Text('Valider'),
+              child: Text('valid'.tr()),
             ),
           ],
         );
@@ -651,7 +654,7 @@ void showMatchArbreDialog(
                   showErrorDialog(context, 'score_format_incorrect'.tr());
                 }
               },
-              child: const Text('Valider'),
+              child: Text('valid'.tr()),
             ),
           ],
         );

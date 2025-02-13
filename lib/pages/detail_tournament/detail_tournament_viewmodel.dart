@@ -112,15 +112,15 @@ class DetailTournamentViewModel extends ChangeNotifier{
   void prepareFinal(DatabaseReference ref, MatchTournament match, String winner) {
     final tournamentRef = FirebaseDatabase.instance.ref().child("tournois").child(tournament!.name);
     final index = tournament?.getIndex(tournament!.finalMatchList.semiFinalist, match);
-    int newIndex = index! < 2 ? 0 : 1;
-      
-    if (tournament?.finalMatchList.finalMatch.player1.isEmpty == true) {
+    int newIndex = index! < 1 ? 0 : 1;
+
+
+    if(newIndex == 0) {
       tournament?.finalMatchList.finalMatch.player1 = winner;
-      tournamentRef.child("finalMatch").update(tournament!.finalMatchList.finalMatch.toJson());
     } else {
-      tournament?.finalMatchList.semiFinalist[newIndex].player2 = winner;
-      tournamentRef.child("finalMatch").update(tournament!.finalMatchList.finalMatch.toJson());
+      tournament?.finalMatchList.finalMatch.player2 = winner;
     }
+    tournamentRef.child("finalMatch").update(tournament!.finalMatchList.finalMatch.toJson());
   }
 
   void prepareSemiFinal(DatabaseReference ref, MatchTournament match, String winner) {
