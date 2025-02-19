@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tournament_management/pages/create_tournament/create_tournament.dart';
 import 'package:tournament_management/pages/login/login.dart';
+import 'package:tournament_management/pages/participation/participation.dart';
 import 'package:tournament_management/pages/tournament/tournament.dart';
 
 import 'home_presenter.dart';
@@ -19,7 +20,7 @@ class HomePage extends StatelessWidget {
 
     final List<Widget> tabs = [
       TournamentPage(),
-     // ParticipationScreen(),
+      ParticipationView(),
       LoginPage(),
     ];
 
