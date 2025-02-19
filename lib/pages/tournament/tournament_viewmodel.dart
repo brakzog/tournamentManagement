@@ -117,7 +117,11 @@ class TournamentViewmodel with ChangeNotifier {
       isChecked = addFutureTournament(tournament, isChecked, future);
     }*/
     //Récupération de l'ensemble des tournois déjà joués
-    if (!isChecked && tournament.tournamentDate.finalDate != null) {
+    if (!isChecked &&
+        tournament.finalMatchList.finalMatch.player1 != "" &&
+        tournament.finalMatchList.finalMatch.player2 != "" &&
+        tournament.finalMatchList.finalMatch.score != ""
+        ) {
       isChecked = addPastTournament(tournament, isChecked, past);
     }
     //Récupération de l'ensemble des tournois annulés ou pas joués
