@@ -225,7 +225,7 @@ class TournamentViewmodel with ChangeNotifier {
     List<MatchTournament> quarterList = getMatchListMap('quartFinal', mapValue);
     List<MatchTournament> semiList = getMatchListMap('semiFinal', mapValue);
     MatchTournament smallFinall = getFinalMatch('smallFinal', mapValue);
-    MatchTournament finale = getFinalMatch('final', mapValue);
+    MatchTournament finale = getFinalMatch('finalMatch', mapValue);
     return EndTournament(
         finalMatch: finale,
         smallFinalMatch: smallFinall,
