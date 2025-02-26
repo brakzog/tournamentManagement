@@ -112,10 +112,7 @@ class TournamentViewmodel with ChangeNotifier {
         tournament.finalMatchList.finalMatch.score.isEmpty) {
       isChecked = addInProgressTournament(tournament, isChecked, inProgress);
     }
-    //Recuperation de l'ensemble des tournois à venir
-    /*if (!isChecked && tournament.tournamentDate.beginingDate != null) {
-      isChecked = addFutureTournament(tournament, isChecked, future);
-    }*/
+    
     //Récupération de l'ensemble des tournois déjà joués
     if (!isChecked &&
         tournament.finalMatchList.finalMatch.player1 != "" &&
@@ -135,17 +132,9 @@ class TournamentViewmodel with ChangeNotifier {
   }
 
   bool addPastTournament(
-      Tournament tournament, bool isChecked, List<Tournament> past) {
-    /*DateTime finalTournamentDate = DateFormat('dd/MM/yyyy')
-        .parse(tournament.tournamentDate.finalDate!); *///securisé au dessus
-    String date = tournament.tournamentDate.finalDate!;
-    DateTime? finalTournamentDate = DateFormatter.toDateTime(date: date, inputFormat: "dd/MM§yyyy");
-    if (finalTournamentDate?.isBefore(DateTime.now()) == true) {
-      if (kDebugMode) print("tournoi déjà joué : $tournament");
-
-      isChecked = true;
-      past.add(tournament);
-    }
+    Tournament tournament, bool isChecked, List<Tournament> past) {
+    isChecked = true;
+    past.add(tournament);
     return isChecked;
   }
 
