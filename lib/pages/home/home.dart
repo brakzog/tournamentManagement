@@ -25,7 +25,7 @@ class HomePage extends StatelessWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text("tournament_management").tr()),
+      appBar: AppBar(title: const Text("").tr()),
       body: tabs[viewModel.currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: viewModel.currentIndex,

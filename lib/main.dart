@@ -7,6 +7,7 @@ import 'package:tournament_management/pages/home/home.dart';
 import 'package:tournament_management/pages/home/home_viewmodel.dart';
 import 'package:tournament_management/pages/login/login.dart';
 import 'package:tournament_management/pages/login/login_viewmodel.dart';
+import 'package:tournament_management/pages/participation/participation_viewmodel.dart';
 import 'package:tournament_management/pages/tournament/tournament_viewmodel.dart';
 
 import 'firebase_options.dart';
@@ -28,6 +29,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => TournamentViewmodel()),
         ChangeNotifierProvider(create: (_) => DetailTournamentViewModel()),
         ChangeNotifierProvider(create: (_) => CreateTournamentViewModel()),
+        ChangeNotifierProvider(create: (_) => ParticipationViewModel()),
 
       ],
       child:    EasyLocalization(
