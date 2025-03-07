@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tournament_management/pages/create_tournament/create_tournament_presenter.dart';
 import 'package:tournament_management/pages/create_tournament/create_tournament_viewmodel.dart';
+import 'package:tournament_management/widgets/address_autocomplete.dart';
 
 class CreateTournamentPage extends StatelessWidget {
   const CreateTournamentPage({super.key});
@@ -37,30 +38,27 @@ class CreateTournamentPage extends StatelessWidget {
             children: [
               _buildTextField(
                 controller: viewModel.tournamentNameController,
-                label: "Nom du tournoi",
+                label: "tournament_name".tr(),
               ),
               const SizedBox(height: 16.0),
               _buildTextField(
                 controller: viewModel.eventTypeController,
-                label: "Type de tournoi",
+                label: "tournament_type".tr(),
               ),
               const SizedBox(height: 16.0),
-              _buildTextField(
-                controller: viewModel.locationController,
-                label: "Lieu",
-              ),
+              AdresseAutocompleteField(controller: viewModel.locationController),
               const SizedBox(height: 16.0),
               _buildGuestList(viewModel, presenter),
               const SizedBox(height: 16.0),
               ElevatedButton(
                 onPressed: () => presenter.addGuest(context),
-                child: const Text("Ajouter un invité"),
+                child: Text("add_guest".tr()),
               ),
               const SizedBox(height: 16.0),
-              Text("Date du tournoi : ${viewModel.tournamentDate}"),
+              Text("tournament_date_definition".tr()+ " : \n${viewModel.tournamentDate} -> ${viewModel.endTournamentDate}"),
               ElevatedButton(
                 onPressed: () => presenter.pickTournamentDate(context),
-                child: const Text("Date de démarrage du tournoi"),
+                child: Text("tournament_begin_date".tr()),
               ),
               const SizedBox(height: 16.0),
               ElevatedButton(
@@ -88,7 +86,7 @@ class CreateTournamentPage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Liste des invités"),
+        Text("participant_list".tr()),
         const SizedBox(height: 8.0),
         Wrap(
           children: viewModel.guestList.map((guest) {

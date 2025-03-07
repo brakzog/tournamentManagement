@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:tournament_management/models/match.dart';
@@ -65,12 +66,51 @@ class DetailTournamentViewModel extends ChangeNotifier{
           player1: userList[i],
           player2: userList[j],
           score: '',
+          date: '${calculateDate("poule")}',
+          location: tournament!.location,
         );
         matches.add(match);
       }
     }
     return matches;
   }
+
+  String calculateDate(String phase) {
+    DateTime startDate = DateFormat("dd/MM/yyyy").parse(tournament!.tournamentDate.beginingDate!);
+    DateTime endDate = DateFormat("dd/MM/yyyy").parse(tournament!.tournamentDate.endDate!);
+
+
+    int totalDays = endDate.difference(startDate).inDays;
+    if (totalDays < 3) {
+      throw Exception("Le tournoi doit durer au moins 3 jours.");
+    }
+
+    // Répartition des jours
+    int phaseGroupDays = (totalDays * 0.6).floor();
+    int quarterFinalsDays = (totalDays * 0.2).floor();
+    int semiFinalsDays = (totalDays * 0.15).floor();
+    int finalsDays = totalDays - (phaseGroupDays + quarterFinalsDays + semiFinalsDays);
+
+    DateTime startPoule = startDate;
+    DateTime startQuarter = startPoule.add(Duration(days: phaseGroupDays));
+    DateTime startSemi = startQuarter.add(Duration(days: quarterFinalsDays));
+    DateTime startFinal = startSemi.add(Duration(days: semiFinalsDays));
+
+    Map<String, String> phases = {
+      "poule": _formatDates(startPoule, phaseGroupDays),
+      "1/4": _formatDates(startQuarter, quarterFinalsDays),
+      "1/2": _formatDates(startSemi, semiFinalsDays),
+      "finale": _formatDates(startFinal, finalsDays),
+    };
+
+    return phases[phase] ?? "Phase inconnue";
+  }
+
+  String _formatDates(DateTime startDate, int days) {
+    DateTime endDate = startDate.add(Duration(days: days - 1));
+    return "${DateFormat('dd-MM-yyyy').format(startDate)} → ${DateFormat('dd-MM-yyyy').format(endDate)}";
+  }
+
 
   void _savePoolsToFirebase(List<Poule> poules) {
     final tournamentRef = FirebaseDatabase.instance.ref().child("tournois");

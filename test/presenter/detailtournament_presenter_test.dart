@@ -29,9 +29,9 @@ void main() {
 
     test('should calculate wins correctly for matches', () {
       final matches = [
-        MatchTournament(player1: 'Alice', player2: 'Bob', score: '6-4;3-6;7-5'),
-        MatchTournament(player1: 'Alice', player2: 'Charlie', score: '6-2;6-3'),
-        MatchTournament(player1: 'Bob', player2: 'Charlie', score: '6-7;7-6;7-5'),
+        MatchTournament(player1: 'Alice', player2: 'Bob', score: '6-4;3-6;7-5', date: "01/10/1987", location: "Nice"),
+        MatchTournament(player1: 'Alice', player2: 'Charlie', score: '6-2;6-3', date: "01/12/1985", location: "Marseille"),
+        MatchTournament(player1: 'Bob', player2: 'Charlie', score: '6-7;7-6;7-5', date: "01/10/1987", location: "Nice"),
       ];
 
       final players = ['Alice', 'Bob', 'Charlie'];

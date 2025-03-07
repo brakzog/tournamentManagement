@@ -13,20 +13,21 @@ dependencies:
 
   flutter_localizations:
     sdk: flutter
-  intl: ^0.19.0
-  easy_localization: ^3.0.0
-  firebase_core: ^3.8.0
-  firebase_auth: ^5.3.3
-  firebase_database: ^11.1.6
-  flutter_secure_storage: ^9.2.2
-  the_apple_sign_in: ^1.1.1
-  google_sign_in: ^6.2.2
-  date_formatter: ^0.0.4
-  provider: ^6.1.2
-  sign_in_with_apple: ^6.1.4
+  intl:
+  easy_localization:
+  firebase_core:
+  firebase_auth:
+  firebase_database:
+  flutter_secure_storage:
+  the_apple_sign_in:
+  google_sign_in:
+  date_formatter:
+  provider:
+  sign_in_with_apple:
+  http:
 
 dependency_overrides:
-  intl: ^0.19.0 
+  intl:
 
 
 
@@ -34,8 +35,8 @@ dependency_overrides:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  mockito: ^5.4.2 # Pour simuler des objets dans vos tests unitaires
-  build_runner: ^2.4.6 # Nécessaire pour générer des mocks
+  mockito: # Pour simuler des objets dans vos tests unitaires
+  build_runner: # Nécessaire pour générer des mocks
 
 flutter:
   uses-material-design: true

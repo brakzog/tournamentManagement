@@ -5,11 +5,14 @@ class CreateTournamentViewModel extends ChangeNotifier {
   final TextEditingController locationController = TextEditingController();
   final TextEditingController eventTypeController = TextEditingController();
   String tournamentDate = "";
+  String endTournamentDate = "";
   final List<String> guestList = [];
 
   void addGuest(String guest) {
+    List<String> newguestList = guest.split(";");
+    List<String> newGuestToAdd = newguestList.where((guest) => !guestList.contains(guest)).toList();
     if (!guestList.contains(guest)) {
-      guestList.add(guest);
+      guestList.addAll(newGuestToAdd);
       notifyListeners();
     }
   }
@@ -21,6 +24,11 @@ class CreateTournamentViewModel extends ChangeNotifier {
 
   void setTournamentDate(String date) {
     tournamentDate = date;
+    notifyListeners();
+  }
+
+  void setTournamentEndDate(String date) {
+    endTournamentDate = date;
     notifyListeners();
   }
 }

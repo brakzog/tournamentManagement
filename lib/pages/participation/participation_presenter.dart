@@ -79,7 +79,7 @@ class ParticipationPresenter {
 
 ,
       Text('opponent').tr(args: [opname]),
-      Text('match_date').tr(args: [date]),
+      Text('match_date').tr(args: [date.split("→ ").first]),
       Text('location').tr(args: [location]),
       if(score.isNotEmpty) Text('score').tr(args:[score]),
 

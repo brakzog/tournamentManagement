@@ -1,3 +1,7 @@
+import 'dart:math';
+
+import 'package:date_formatter/date_formatter.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
@@ -16,19 +20,19 @@ class CreateTournamentPresenter {
       builder: (BuildContext context) {
         String guest = '';
         return AlertDialog(
-          title: const Text('Ajouter un invité'),
+          title: Text('add_guest'.tr()),
           content: TextField(
             onChanged: (value) => guest = value,
-            decoration: const InputDecoration(hintText: 'Nom de l\'invité'),
+            decoration: InputDecoration(hintText: 'participant_name'.tr()),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Annuler'),
+              child: Text('cancel'.tr()),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, guest),
-              child: const Text('Ajouter'),
+              child: Text('add'.tr()),
             ),
           ],
         );
@@ -45,53 +49,23 @@ class CreateTournamentPresenter {
   }
 
   Future<void> pickTournamentDate(BuildContext context) async {
-    DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime(DateTime.now().year + 1),
-    );
+    DateTimeRange? rangeTournament = await showDateRangePicker(context: context, firstDate: DateTime.now(), lastDate: DateTime(DateTime.now().year + 1),);
 
-    if (pickedDate != null) {
-      TimeOfDay? pickedTime = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.now(),
-      );
 
-      if (pickedTime != null) {
-        String formattedDate = "${pickedDate.day}/${pickedDate.month}/${pickedDate.year}";
-        viewModel.setTournamentDate(formattedDate);
-      }
+    if (rangeTournament != null) {
+        DateTime startDate =  rangeTournament.start;
+        DateTime endDate = rangeTournament.end;
+        DateFormat  df = DateFormat("dd/MM/yyyy");
+
+        String formattedDateStart =  df.format(startDate);
+        String formattedDateEnd =  df.format(endDate);
+        
+         viewModel.setTournamentDate(formattedDateStart);
+         viewModel.setTournamentEndDate(formattedDateEnd);
     }
   }
+  
 
-  /*void submitTournament(BuildContext context) {
-    if (viewModel.tournamentNameController.text.isEmpty ||
-        viewModel.locationController.text.isEmpty ||
-        viewModel.eventTypeController.text.isEmpty ||
-        viewModel.tournamentDate.isEmpty ||
-        viewModel.guestList.isEmpty) {
-      debugPrint("Veuillez remplir tous les champs requis.");
-      return;
-    }
-
-    final newTournament = Tournament(createdBy: FirebaseAuth.instance.currentUser!.email!,
-                                     name: viewModel.tournamentNameController.text,
-                                     sportEvent: viewModel.eventTypeController.text,
-                                     tournamentDate: viewModel.tournamentDate,
-                                     participants: viewModel.guestList,
-                                     pouleList: List.of(),
-                                      finalMatchList: EndTournament(finalMatch: finalMatch, smallFinalMatch: smallFinalMatch, semiFinalist: semiFinalist, quarterFinalList: quarterFinalList))
-
-    // Simule l'enregistrement
-    debugPrint("Tournoi créé avec succès !");
-    debugPrint("Nom : ${viewModel.tournamentNameController.text}");
-    debugPrint("Lieu : ${viewModel.locationController.text}");
-    debugPrint("Type : ${viewModel.eventTypeController.text}");
-    debugPrint("Date : ${viewModel.tournamentDate}");
-    debugPrint("Invités : ${viewModel.guestList.join(", ")}");
-    Navigator.pop(context);
-  }*/
   void submitTournament(BuildContext context) {
     String tournamentName = viewModel.tournamentNameController.text;
     String location = viewModel.locationController.text;
@@ -104,7 +78,7 @@ class CreateTournamentPresenter {
         viewModel.tournamentDate.isEmpty ||
         viewModel.guestList.isEmpty) {
       showErrorDialog(context,
-          "Un des champs requis à la création du tournoi n'a pas été rempli. Veuillez le remplir avant de soumettre le tournoi");
+          "missing_field".tr());
       return;
     }
 
@@ -113,7 +87,7 @@ class CreateTournamentPresenter {
         FirebaseDatabase.instance.ref().child("tournois");
 
     // Get the key chosen from this table (should check its unicity)
-    String key = '$tournamentName-${viewModel.locationController.text}';
+    String key = '$tournamentName-${viewModel.eventTypeController.text}_${Random().nextInt(5000)}';
 
     //At this point, we have not already participant list
     //(they have not confirmed yet their participation)
@@ -124,6 +98,7 @@ class CreateTournamentPresenter {
       "sportEvent": viewModel.eventTypeController.text,
       "tournamentDate": {
         "beginingDate": viewModel.tournamentDate,
+        "endDate": viewModel.endTournamentDate,
       },
     };
 

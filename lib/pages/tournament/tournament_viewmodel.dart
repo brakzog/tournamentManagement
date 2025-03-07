@@ -1,6 +1,5 @@
 import 'dart:collection';
 
-import 'package:date_formatter/date_formatter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
@@ -78,6 +77,7 @@ class TournamentViewmodel with ChangeNotifier {
         participants: participantsList.cast<String>(),
         pouleList: pouleList.cast<Poule>(),
         finalMatchList: finalMatchList,
+        location: "${mapValue['location']}",
       );
       // Vérifiez si le tournoi appartient à l'utilisateur actuel (par exemple, par ID d'utilisateur).
       if (tournament.createdBy == FirebaseAuth.instance.currentUser?.email) {
@@ -140,8 +140,7 @@ class TournamentViewmodel with ChangeNotifier {
 
   bool addInProgressTournament(
       Tournament tournament, bool isChecked, List<Tournament> inProgress) {
-    if (tournament.tournamentDate.finalDate == null ||
-        tournament.tournamentDate.finalDate!.isEmpty) {
+    if (tournament.finalMatchList.finalMatch.score.isEmpty) {
       inProgress.add(tournament);
       isChecked = true;
     }
@@ -151,28 +150,11 @@ class TournamentViewmodel with ChangeNotifier {
   TournamentDate getTournamentDate(Map<Object?, Object?> mapValue) {
     final dateMap = mapValue["tournamentDate"] as Map<Object?, Object?>;
 
-    final pouleDates = dateMap["pouleListDate"] as Map<Object?, Object?>?;
-    final quarterDates = dateMap["quarterListDate"] as List<Object?>?;
-    final semiDates = dateMap["semiListDate"] as List<Object?>?;
-    final finalDate = dateMap["finalDate"];
-
     TournamentDate tournamentDate = TournamentDate(
       beginingDate: "${dateMap["beginingDate"]}",
+      endDate: "${dateMap["endDate"]}",
     );
-    if (pouleDates != null) {
-      pouleDates.forEach((key, value) {
-        tournamentDate.pouleListDate?.add("$value");
-      });
-    }
-    if (quarterDates != null) {
-      tournamentDate.quarterListDate = quarterDates.cast<String>();
-    }
-    if (semiDates != null) {
-      tournamentDate.semiListDate = semiDates.cast<String>();
-    }
-    if (finalDate != null) {
-      tournamentDate.finalDate = "$finalDate";
-    }
+    
     return tournamentDate;
   }
 
@@ -203,6 +185,8 @@ class TournamentViewmodel with ChangeNotifier {
         player1: "${subMap['player1']}",
         player2: "${subMap['player2']}",
         score: "${subMap['score']}",
+        date: "${subMap['date']}",
+        location: "${subMap['location']}",
       );
       returnList.add(currentMatch);
     }
@@ -242,6 +226,8 @@ class TournamentViewmodel with ChangeNotifier {
           player1: "${valueMap['player1']}",
           player2: "${valueMap['player2']}",
           score: "${valueMap['score']}",
+          date: "${valueMap['date']}",
+          location: "${valueMap['location']}",
         );
         matchList.add(currentMatch);
       }
@@ -267,6 +253,8 @@ class TournamentViewmodel with ChangeNotifier {
           player1: "${valueMap['player1']}",
           player2: "${valueMap['player2']}",
           score: "${valueMap['score']}",
+          date: "${valueMap['date']}",
+          location: "${valueMap['location']}",
         );
         matchList.add(currentMatch);
       
@@ -276,13 +264,15 @@ class TournamentViewmodel with ChangeNotifier {
 
   MatchTournament getFinalMatch(String key, Map<Object?, Object?> mapValue) {
     if (mapValue[key] == null) {
-      return MatchTournament(player1: "", player2: "", score: "");
+      return MatchTournament(player1: "", player2: "", score: "", date: "", location: "");
     }
     Map<Object?, Object?> objectMap = mapValue[key] as Map<Object?, Object?>;
     return MatchTournament(
       player1: "${objectMap['player1']}",
       player2: "${objectMap['player2']}",
       score: "${objectMap['score']}",
+      date: "${objectMap['date']}",
+      location: "${objectMap['location']}",
     );
   }
 }

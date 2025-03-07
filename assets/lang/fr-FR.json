@@ -40,5 +40,18 @@
   "match_date": "Date du match: {}",
   "location": "Localisation: {}",
   "my_result": "Mes scores",
-  "score": "Score: {}"
+  "score": "Score: {}",
+  "tournament_name": "Nom du tournoi",
+  "tournament_type": "Type de tournoi",
+  "add_guest": "Ajouter des participants",
+  "tournament_date_definition": "Dates de début et fin du tournoi",
+  "tournament_begin_date": "Dates du tournoi",
+  "tournament_location": "Lieu du tournoi",
+  "location_input": "addresse",
+  "participant_list": "Liste des participants",
+  "participant_name": "Email des participant séparés par des ;",
+  "cancel": "Annuler",
+  "add": "Ajouter",
+  "missing_field": "Un des champs requis à la création du tournoi n'a pas été rempli. Veuillez le remplir avant de soumettre le tournoi",
+  "start_tournament": "Démarrer le tournoi"
 }

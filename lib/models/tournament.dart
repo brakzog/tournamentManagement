@@ -6,6 +6,7 @@ class Tournament {
   final String name;
   final String sportEvent; //Type d'epreuve
   final TournamentDate tournamentDate;
+  final String location;
   final String createdBy;
   final List<String> participants;
   final List<Poule> pouleList;
@@ -19,6 +20,7 @@ class Tournament {
     required this.participants,
     required this.pouleList,
     required this.finalMatchList,
+    required this.location,
   });
 
   // Méthode pour convertir un objet Map en instance de Tournament.
@@ -31,6 +33,7 @@ class Tournament {
       participants: map['participants'],
       pouleList: map['pouleList'],
       finalMatchList: map['finalMatchList'],
+      location: map['location']
     );
   }
 
@@ -75,22 +78,17 @@ class Tournament {
 
 class TournamentDate {
   String? beginingDate;
-  List<String>? pouleListDate;
-  List<String>? quarterListDate;
-  List<String>? semiListDate;
-  String? finalDate;
+  String? endDate;
+ 
 
   TournamentDate({
     this.beginingDate,
-    this.pouleListDate,
-    this.quarterListDate,
-    this.semiListDate,
-    this.finalDate,
+    this.endDate,
   });
 
   @override
   String toString() {
-    return "begin: $beginingDate, poule: $pouleListDate, quarter: $quarterListDate, semi: $semiListDate, final: $finalDate";
+    return "begin: $beginingDate, end: $endDate";
   }
 }
 

@@ -1,5 +1,3 @@
-import 'dart:collection';
-import 'dart:ffi';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -38,9 +36,9 @@ class ParticipationViewModel extends ChangeNotifier{
           mapValue["participants"] as List<Object?>;
 
           //FOR DEBUG
-          String? currentUser = "a1";//FirebaseAuth.instance.currentUser?.email;
+      String? currentUser = FirebaseAuth.instance.currentUser?.email;
       if(participantsList.contains(currentUser)) {
-        var unplayedMatches = getMatches(mapValue, "a1", played);
+        var unplayedMatches = getMatches(mapValue, currentUser!, played);
         returnList.addAll(unplayedMatches);
       }
 
@@ -58,8 +56,9 @@ class ParticipationViewModel extends ChangeNotifier{
       if (tournamentData[round] is Map<Object?, Object?>) {
         var roundData = tournamentData[round] as Map<Object?, Object?>;
         if(roundData["player1"] == userEmail || roundData["player2"] == userEmail && (played ? roundData["score"] != "" : roundData["score"] == "")) {
-          Map<Object?, Object?> date = tournamentData["tournamentDate"] as Map<Object?, Object?>;
-          unplayedMatches.add(ParticipationModel(date: date["beginDate"]!.toString(), location: tournamentData["location"]!.toString(), opposant: roundData["player1"] == userEmail? roundData["player2"].toString() : roundData["player1"].toString(), score: roundData['score'].toString()));
+        //  Map<Object?, Object?> date = tournamentData["tournamentDate"] as Map<Object?, Object?>;
+
+          unplayedMatches.add(ParticipationModel(date: roundData["date"]!.toString(), location: roundData["location"]!.toString(), opposant: roundData["player1"] == userEmail? roundData["player2"].toString() : roundData["player1"].toString(), score: roundData['score'].toString()));
         }
       }
     }
@@ -75,7 +74,7 @@ class ParticipationViewModel extends ChangeNotifier{
             var matchMap = matchObject as Map<Object?, Object?>;
             if(matchMap["player1"] == userEmail || matchMap["player2"] == userEmail && (played? matchMap["score"] != "" : matchMap["score"] == "")) {
               Map<Object?, Object?> date = tournamentData["tournamentDate"] as Map<Object?, Object?>;
-              unplayedMatches.add(ParticipationModel(date: date["beginingDate"]!.toString(), location: tournamentData["location"]!.toString(), opposant: matchMap["player1"] == userEmail? matchMap["player2"].toString() : matchMap["player1"].toString(), score: matchMap['score'].toString() ));
+              unplayedMatches.add(ParticipationModel(date: matchMap["date"]!.toString(), location: matchMap["location"]!.toString(), opposant: matchMap["player1"] == userEmail? matchMap["player2"].toString() : matchMap["player1"].toString(), score: matchMap['score'].toString() ));
             }
           }
        }

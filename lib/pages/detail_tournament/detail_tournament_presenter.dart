@@ -102,7 +102,7 @@ Widget _buildStartTournamentButton() {
         // Cela déclenche la mise à jour de la vue sans modifier la logique métier ici
       });
     },
-    child: const Text("Démarrer le tournoi"),
+    child: Text("start_tournament".tr()),
   );
 }
 
@@ -348,10 +348,13 @@ Widget _buildMatches(List<MatchTournament> matchList) {
                   showErrorDialog(context, errorMessage);
                 } else {
                   if (isValidScoreFormat(scoreController.text)) {
+                    final time = DateTime.now();
                     MatchTournament newMatch = MatchTournament(
                       player1: selectedPlayer1,
                       player2: selectedPlayer2,
                       score: scoreController.text,
+                      date: "${time.day}/${time.month}/${time.year}",
+                      location: tournament.location,
                     );
                     updateScore(selectedPouleRef, newMatch);
                     Navigator.of(context).pop();
@@ -484,21 +487,29 @@ void updateScoreGraph(DatabaseReference endTournamentRef, MatchTournament newMat
         player1: pouleRankings['A']![0],
         player2: pouleRankings['B']![1],
         score: '',
+        date: viewModel.calculateDate("1/4"),
+        location: tournament.location,
       ),
       MatchTournament(
         player1: pouleRankings['C']![0],
         player2: pouleRankings['D']![1],
         score: '',
+        date: viewModel.calculateDate("1/4"),
+        location: tournament.location,
       ),
       MatchTournament(
         player1: pouleRankings['B']![0],
         player2: pouleRankings['A']![1],
         score: '',
+        date: viewModel.calculateDate("1/4"),
+        location: tournament.location,
       ),
       MatchTournament(
         player1: pouleRankings['D']![0],
         player2: pouleRankings['C']![1],
         score: '',
+        date: viewModel.calculateDate("1/4"),
+        location: tournament.location,
       ),
     ];
 
@@ -646,7 +657,12 @@ void showMatchArbreDialog(
               
 
                 if(isValidScoreFormat(scoreController.text)){
-                  MatchTournament newMatch = MatchTournament(player1: selectedPlayer1, player2: selectedPlayer2, score: scoreController.text);
+                  MatchTournament newMatch = MatchTournament(
+                    player1: selectedPlayer1, 
+                    player2: selectedPlayer2,
+                    score: scoreController.text,
+                    date: "${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}",
+                    location: tournament.location,);
                   DatabaseReference endTournamentRef =  getTournamentRef(newMatch);
                   updateScoreGraph(endTournamentRef, newMatch);
                   Navigator.of(context).pop();
