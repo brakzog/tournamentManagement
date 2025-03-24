@@ -36,3 +36,6 @@ Runner/GeneratedPluginRegistrant.*
 
 #For security reason
 GoogleService-Info.plist
+
+
+Podfile.lock
