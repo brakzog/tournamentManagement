@@ -76,7 +76,7 @@ class CreateTournamentPresenter {
     if (tournamentName.isEmpty ||
         location.isEmpty ||
         viewModel.tournamentDate.isEmpty ||
-        viewModel.guestList.isEmpty) {
+        viewModel.guestList.length < 8) {
       showErrorDialog(context,
           "missing_field".tr());
       return;
