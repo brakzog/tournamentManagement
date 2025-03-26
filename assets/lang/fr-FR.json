@@ -53,5 +53,13 @@
   "cancel": "Annuler",
   "add": "Ajouter",
   "missing_field": "Un des champs requis à la création du tournoi n'a pas été rempli. Veuillez le remplir avant de soumettre le tournoi",
-  "start_tournament": "Démarrer le tournoi"
+  "start_tournament": "Démarrer le tournoi",
+  "not_enough_people": "8 personnes doivent être inscrites avant de pouvoir créer le tournoi",
+  "Yes": "Oui",
+  "No": "Non",
+  "Ok": "Ok",
+  "information": "information",
+  "error": "Erreur",
+  "attention": "Attention",
+  "all_match_poule_played": "Tous les matchs de poule ont été joués, passage à la pahse finale"
 }

@@ -1,3 +1,4 @@
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
@@ -344,8 +345,20 @@ Widget _buildMatches(List<MatchTournament> matchList) {
                     selectedPlayer1, selectedPlayer2, selectedPouleRef);
 
                 if (matchExists) {
-                  String errorMessage = tr('matchAlreadyPlayed',args: [selectedPlayer1, selectedPlayer2],);
-                  showErrorDialog(context, errorMessage);
+                  String message = tr('matchAlreadyPlayed',args: [selectedPlayer1, selectedPlayer2],);
+                  bool? result = await showAskDialog(context, message);
+                  if(result == true && isValidScoreFormat(scoreController.text)) {
+                    final time = DateTime.now();
+                    MatchTournament newMatch = MatchTournament(
+                      player1: selectedPlayer1,
+                      player2: selectedPlayer2,
+                      score: scoreController.text,
+                      date: "${time.day}/${time.month}/${time.year}",
+                      location: tournament.location,
+                    );
+                    updateScore(selectedPouleRef, newMatch, context);
+                    Navigator.of(context).pop();
+                  }
                 } else {
                   if (isValidScoreFormat(scoreController.text)) {
                     final time = DateTime.now();
@@ -356,7 +369,7 @@ Widget _buildMatches(List<MatchTournament> matchList) {
                       date: "${time.day}/${time.month}/${time.year}",
                       location: tournament.location,
                     );
-                    updateScore(selectedPouleRef, newMatch);
+                    updateScore(selectedPouleRef, newMatch, context);
                     Navigator.of(context).pop();
                   } else {
                     showErrorDialog(context, 'score_format_incorrect'.tr());
@@ -373,7 +386,6 @@ Widget _buildMatches(List<MatchTournament> matchList) {
 
   // Fonction pour vérifier le format du score
   bool isValidScoreFormat(String score) {
-    // Utilisez une expression régulière pour vérifier le format du score
     // Ici, nous utilisons une expression régulière simple pour le format Xi-Yi;Xi+1-Yi+1;...
     RegExp regex = RegExp(r'^\d+-\d+(;\d+-\d+)*$');
     return regex.hasMatch(score);
@@ -402,13 +414,15 @@ Widget _buildMatches(List<MatchTournament> matchList) {
   
 
 
-  void updateScore(DatabaseReference selectedPouleRef, MatchTournament newMatch) async {
+  void updateScore(DatabaseReference selectedPouleRef, MatchTournament newMatch, BuildContext context) async {
     await viewModel.updateMatch(selectedPouleRef, newMatch);
 
     setState(() {
       tournament.updatePoule(selectedPoule, newMatch.player1, newMatch.player2, newMatch.score);
       if (isAllMatchPlayed()) {
+        Future<bool?> _ = showInfoDialog(context, "all_match_poule_played".tr());
         updateGraph();
+        tabController.animateTo(1);
       }
     });
   }

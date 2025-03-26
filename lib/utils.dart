@@ -97,7 +97,7 @@ List<String> calculateRanking(Poule poule) {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Erreur'),
+          title: Text('error').tr(),
           content: Text(message),
           actions: [
             ElevatedButton(
@@ -111,6 +111,54 @@ List<String> calculateRanking(Poule poule) {
       },
     );
   }
+
+Future<bool?> showAskDialog(BuildContext context, String message) async {
+      return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('attention').tr(),
+          content: Text(message),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop(true); 
+              },
+              child: Text('Yes').tr(),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop(false); 
+            },
+            child: Text('No').tr())
+          ],
+        );
+      },
+    );
+  }
+
+  Future<bool?> showInfoDialog(BuildContext context, String message) async {
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('information').tr(),
+          content: Text(message),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop(true); 
+              },
+              child: Text('Ok').tr(),
+            )
+          ],
+        );
+      },
+    );
+  }
+
+
+
 
   void showDialogTournament(BuildContext context) {
     showDialog(

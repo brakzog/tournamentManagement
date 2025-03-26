@@ -75,10 +75,14 @@ class CreateTournamentPresenter {
 
     if (tournamentName.isEmpty ||
         location.isEmpty ||
-        viewModel.tournamentDate.isEmpty ||
-        viewModel.guestList.length < 8) {
+        viewModel.tournamentDate.isEmpty) {
       showErrorDialog(context,
           "missing_field".tr());
+      return;
+    }
+
+    if(viewModel.guestList.length < 8) {
+      showErrorDialog(context, "not_enough_people".tr());
       return;
     }
 
