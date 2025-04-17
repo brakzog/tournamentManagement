@@ -69,23 +69,21 @@ class _AdresseAutocompleteFieldState extends State<AdresseAutocompleteField> {
                   /*  widget.controller.text = _suggestions[index];
                     _removeOverlay();*/
                     // Supprime temporairement le listener
-                    widget.controller.removeListener(_onTextChanged);
+                     widget.controller.removeListener(_onTextChanged);
 
                     widget.controller.text = _suggestions[index];
                     _removeOverlay();
 
-                    // Repositionne le curseur à la fin du texte
                     widget.controller.selection = TextSelection.fromPosition(
                       TextPosition(offset: widget.controller.text.length),
                     );
 
-                    // Réactive le listener après un court délai
+                    // Force le focus ailleurs (vue neutre)
+                    FocusScope.of(context).requestFocus(FocusNode());
+
                     Future.delayed(Duration(milliseconds: 100), () {
                       widget.controller.addListener(_onTextChanged);
                     });
-
-                    // Retire le focus pour éviter les doubles overlays
-                    _focusNode.unfocus();
                   },
                 );
               },
