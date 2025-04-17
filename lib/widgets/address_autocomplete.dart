@@ -66,8 +66,26 @@ class _AdresseAutocompleteFieldState extends State<AdresseAutocompleteField> {
                 return ListTile(
                   title: Text(_suggestions[index]),
                   onTap: () {
+                  /*  widget.controller.text = _suggestions[index];
+                    _removeOverlay();*/
+                    // Supprime temporairement le listener
+                    widget.controller.removeListener(_onTextChanged);
+
                     widget.controller.text = _suggestions[index];
                     _removeOverlay();
+
+                    // Repositionne le curseur à la fin du texte
+                    widget.controller.selection = TextSelection.fromPosition(
+                      TextPosition(offset: widget.controller.text.length),
+                    );
+
+                    // Réactive le listener après un court délai
+                    Future.delayed(Duration(milliseconds: 100), () {
+                      widget.controller.addListener(_onTextChanged);
+                    });
+
+                    // Retire le focus pour éviter les doubles overlays
+                    _focusNode.unfocus();
                   },
                 );
               },
@@ -80,6 +98,11 @@ class _AdresseAutocompleteFieldState extends State<AdresseAutocompleteField> {
     overlay.insert(_overlayEntry!);
   }
 
+  void _onTextChanged() {
+  _fetchSuggestions(widget.controller.text);
+}
+
+
   void _removeOverlay() {
     _overlayEntry?.remove();
     _overlayEntry = null;
@@ -88,7 +111,7 @@ class _AdresseAutocompleteFieldState extends State<AdresseAutocompleteField> {
   @override
   void initState() {
     super.initState();
-    widget.controller.addListener(() => _fetchSuggestions(widget.controller.text));
+    widget.controller.addListener(() => _onTextChanged());
     _focusNode.addListener(() {
       if (!_focusNode.hasFocus) _removeOverlay();
     });
