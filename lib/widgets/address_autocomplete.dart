@@ -78,12 +78,9 @@ class _AdresseAutocompleteFieldState extends State<AdresseAutocompleteField> {
                       TextPosition(offset: widget.controller.text.length),
                     );
 
-                    // Force le focus ailleurs (vue neutre)
-                    FocusScope.of(context).requestFocus(FocusNode());
+                    _removeOverlay();
 
-                    Future.delayed(Duration(milliseconds: 100), () {
-                      widget.controller.addListener(_onTextChanged);
-                    });
+                    _focusNode.unfocus();
                   },
                 );
               },
@@ -111,8 +108,13 @@ class _AdresseAutocompleteFieldState extends State<AdresseAutocompleteField> {
     super.initState();
     widget.controller.addListener(() => _onTextChanged());
     _focusNode.addListener(() {
-      if (!_focusNode.hasFocus) _removeOverlay();
-    });
+    if (_focusNode.hasFocus) {
+      widget.controller.addListener(_onTextChanged);
+    } else {
+      widget.controller.removeListener(_onTextChanged);
+      _removeOverlay();
+    }
+});
   }
 
   @override
