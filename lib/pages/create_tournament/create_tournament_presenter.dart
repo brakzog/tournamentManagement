@@ -112,6 +112,7 @@ class CreateTournamentPresenter {
       if (kDebugMode) {
         print("Tournoi enregistré avec succès");
       }
+      viewModel.resetFields();
       showDialogTournament(context);
     }).catchError((error) {
       // Gestion des erreurs

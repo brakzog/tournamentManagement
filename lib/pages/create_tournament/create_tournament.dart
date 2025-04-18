@@ -7,7 +7,10 @@ import 'package:tournament_management/pages/create_tournament/create_tournament_
 import 'package:tournament_management/widgets/address_autocomplete.dart';
 
 class CreateTournamentPage extends StatelessWidget {
-  const CreateTournamentPage({super.key});
+  CreateTournamentPage({super.key});
+  final complementFocusNode = FocusNode();
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +49,7 @@ class CreateTournamentPage extends StatelessWidget {
                 label: "tournament_type".tr(),
               ),
               const SizedBox(height: 16.0),
-              AdresseAutocompleteField(controller: viewModel.locationController),
+              AdresseAutocompleteField(controller: viewModel.locationController, nextFocus: complementFocusNode,),
               const SizedBox(height: 16.0),
               _buildGuestList(viewModel, presenter),
               const SizedBox(height: 16.0),

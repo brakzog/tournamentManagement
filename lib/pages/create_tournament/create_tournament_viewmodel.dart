@@ -31,4 +31,13 @@ class CreateTournamentViewModel extends ChangeNotifier {
     endTournamentDate = date;
     notifyListeners();
   }
+
+  void resetFields() {
+    tournamentNameController.text = "";
+    locationController.text = "";
+    eventTypeController.text = "";
+    tournamentDate = "";
+    endTournamentDate = "";
+    guestList.clear();
+  }
 }

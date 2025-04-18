@@ -62,7 +62,7 @@ class HomePage extends StatelessWidget {
           Navigator.push(
             context,
             AnimatedCreateTournamentPageRoute(
-              page: const CreateTournamentPage(),
+              page: CreateTournamentPage(),
             ),
           ).then((value) {
             presenter.onTabSelected(0); // Retourne à l’onglet "Mes Tournois"

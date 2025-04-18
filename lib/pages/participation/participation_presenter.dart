@@ -45,6 +45,12 @@ class ParticipationPresenter {
       } else if (snapshot.hasError) {
         return Center(child: Text('error_fetching'.tr()));
       } else if (snapshot.hasData) {
+        if(snapshot.data!.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.all(30.0),
+            child: Center(child: Text('no_result'.tr())),
+          );
+        } else {
         return ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -53,6 +59,7 @@ class ParticipationPresenter {
             return _buildItem(snapshot.data, index, context);
           },
         );
+        }
       } else {
         return Center(child: Text('no_result'.tr()));
       }
