@@ -33,10 +33,6 @@ class HomePage extends StatelessWidget {
           if (index == 2) {
             // Déconnexion
             await presenter.onLogoutTapped();
-            Navigator.of(context).popUntil((route) => route.isFirst);  // Ajout pour mieux gérer la navigation
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => LoginPage()),
-            );
           } else {
             // Met à jour l'onglet sélectionné
             presenter.onTabSelected(index);

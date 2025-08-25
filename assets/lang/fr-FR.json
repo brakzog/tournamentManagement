@@ -61,5 +61,7 @@
   "information": "information",
   "error": "Erreur",
   "attention": "Attention",
-  "all_match_poule_played": "Tous les matchs de poule ont été joués, passage à la pahse finale"
+  "all_match_poule_played": "Tous les matchs de poule ont été joués, passage à la pahse finale",
+  "loading": "Chargement en cours...",
+  "auth_error": "Erreur d'authentification"
 }

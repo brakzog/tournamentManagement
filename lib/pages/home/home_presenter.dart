@@ -10,6 +10,6 @@ class HomePresenter {
   }
 
   Future<void> onLogoutTapped() async {
-    await viewModel.logoutUser();
+    await viewModel.logout();
   }
 }

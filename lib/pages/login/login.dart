@@ -10,19 +10,15 @@ import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart'; // Assurez-vous d'importer easy_localization
 
 class LoginPage extends StatelessWidget {
+  const LoginPage({super.key});
+
   @override
   Widget build(BuildContext context) {
-    final viewModel = Provider.of<LoginViewModel>(context);
+    final viewModel = context.watch<LoginViewModel>();
     final presenter = LoginPresenter(viewModel);
 
-    // Si la connexion réussit, navigue vers la page Home
-    if (viewModel.isSuccess) {
-      Future.microtask(() {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => HomePage()),
-        );
-      });
-    }
+    // ❌ IMPORTANT : plus AUCUNE navigation ici.
+    // On ne pousse pas Home sur succès : Root écoute authStateChanges() et fait la bascule.
 
     return Scaffold(
       appBar: AppBar(title: Text('login_title').tr()),
@@ -34,40 +30,47 @@ class LoginPage extends StatelessWidget {
             Text(
               'connect_google',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18),
+              style: const TextStyle(fontSize: 18),
             ).tr(),
-            SizedBox(height: 20),
-            viewModel.isLoading
-                ? Center(child: CircularProgressIndicator())
-                : ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      elevation: 4,
-                    ),
-                    onPressed: presenter.onGoogleSignInTapped,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('connect_google').tr(),
-                      ],
-                    ),
+            const SizedBox(height: 20),
+
+            // Bouton Google
+            if (viewModel.isLoading)
+              const Center(child: CircularProgressIndicator())
+            else
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
-            if (viewModel.errorMessage != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 16),
-                child: Text(
-                  viewModel.errorMessage!,
-                  style: TextStyle(color: Colors.red),
-                  textAlign: TextAlign.center,
+                  elevation: 4,
+                ),
+                onPressed: presenter.onGoogleSignInTapped,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('connect_google').tr(),
+                  ],
                 ),
               ),
-            SizedBox(height: 10),
+
+            // Erreur éventuelle
+            if (viewModel.errorMessage != null) ...[
+              const SizedBox(height: 16),
+              Text(
+                viewModel.errorMessage!,
+                style: const TextStyle(color: Colors.red),
+                textAlign: TextAlign.center,
+              ),
+            ],
+
+            const SizedBox(height: 10),
+
+            // Bouton Apple (iOS uniquement)
             if (Platform.isIOS)
-              Container(
+              SizedBox(
                 height: 50,
                 child: SignInWithAppleButton(
                   onPressed: presenter.onAppleSignInTapped,

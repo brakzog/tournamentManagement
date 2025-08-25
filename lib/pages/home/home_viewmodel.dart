@@ -11,8 +11,10 @@ class HomeViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> logoutUser() async {
-    await FirebaseAuth.instance.signOut();
-    await const FlutterSecureStorage().delete(key: "userId");
+  
+  Future<void> logout() async {
+	final storage = const FlutterSecureStorage();
+	await storage.delete(key: 'userId');
+	await FirebaseAuth.instance.signOut();
   }
 }

@@ -25,6 +25,7 @@ dependencies:
   provider:
   sign_in_with_apple:
   http:
+  crypto:
 
 dependency_overrides:
   intl:
