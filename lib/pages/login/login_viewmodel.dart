@@ -61,22 +61,13 @@ class LoginViewModel extends ChangeNotifier {
     }
   }
 
-  // ===== APPLE → FIREBASE =====
-
-  // Nonce utilitaire
+   // ===== APPLE =====
   String _generateNonce([int length = 32]) {
-    const charset =
-        '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
-    final random = Random.secure();
-    return List.generate(length, (_) => charset[random.nextInt(charset.length)])
-        .join();
+    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final rand = Random.secure();
+    return List.generate(length, (_) => chars[rand.nextInt(chars.length)]).join();
   }
-
-  String _sha256ofString(String input) {
-    final bytes = utf8.encode(input);
-    final digest = sha256.convert(bytes);
-    return digest.toString();
-  }
+  String _sha256ofString(String input) => sha256.convert(utf8.encode(input)).toString();
 
   Future<void> connectWithApple() async {
     _isLoading = true;
@@ -85,48 +76,38 @@ class LoginViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 1) Apple Sign-In avec nonce
       final rawNonce = _generateNonce();
-      final nonce = _sha256ofString(rawNonce);
+      final hashedNonce = _sha256ofString(rawNonce);
 
-      final appleIdCredential = await SignInWithApple.getAppleIDCredential(
-        scopes: [
-          AppleIDAuthorizationScopes.email,
-          AppleIDAuthorizationScopes.fullName,
-        ],
-        nonce: nonce,
+      final webOptions = null;
+
+      final apple = await SignInWithApple.getAppleIDCredential(
+        scopes: [AppleIDAuthorizationScopes.email, AppleIDAuthorizationScopes.fullName],
+        nonce: hashedNonce,
+        webAuthenticationOptions: webOptions,
       );
 
-      // 2) Crée le credential Firebase (Apple = oauth 'apple.com')
-      final oauthCredential = OAuthProvider('apple.com').credential(
-        idToken: appleIdCredential.identityToken,
+      // Crée le credential Firebase
+      final oauth = OAuthProvider('apple.com').credential(
+        idToken: apple.identityToken,
         rawNonce: rawNonce,
-        // accessToken n'est pas requis pour Apple natif
+        // IMPORTANT pour Android (flux web): passer aussi l'authorizationCode en accessToken
+        accessToken: apple.authorizationCode,
       );
 
-      // 3) Connecte-toi à Firebase
-      await FirebaseAuth.instance.signInWithCredential(oauthCredential);
+      await FirebaseAuth.instance.signInWithCredential(oauth);
 
-      _isSuccess = true; // Root passera à Home
+      _isSuccess = true; // Root basculera vers Home
     } on SignInWithAppleAuthorizationException catch (e, st) {
-      // Erreurs natives Apple (userCancelled, etc.)
       _isSuccess = false;
-      if (e.code == AuthorizationErrorCode.canceled) {
-        _errorMessage = null; // annulation = pas d'erreur visible
-      } else {
-        _errorMessage = "Apple Sign-In a échoué : ${e.message}";
-      }
-      if (kDebugMode) {
-        print(_errorMessage);
-        print(st);
-      }
+      _errorMessage = (e.code == AuthorizationErrorCode.canceled)
+          ? null
+          : "Apple Sign-In a échoué : ${e.message}";
+      if (kDebugMode) { print(_errorMessage); print(st); }
     } catch (e, st) {
       _isSuccess = false;
       _errorMessage = "Erreur d'authentification Apple : $e";
-      if (kDebugMode) {
-        print(_errorMessage);
-        print(st);
-      }
+      if (kDebugMode) { print(_errorMessage); print(st); }
     } finally {
       _isLoading = false;
       notifyListeners();

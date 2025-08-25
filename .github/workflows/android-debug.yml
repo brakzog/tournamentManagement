@@ -8,6 +8,10 @@ on:
 jobs:
   build-android:
     runs-on: ubuntu-latest
+    env:
+      # Double couche pour être sûr que Gradle/Java héritent bien de la RAM
+      JAVA_TOOL_OPTIONS: -Xmx4g
+      GRADLE_OPTS: -Xmx4g -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8"
     steps:
       - uses: actions/checkout@v4
 
@@ -16,6 +20,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -26,11 +31,20 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
+      # Option A (par défaut)
       - name: Build debug APK
         run: flutter build apk --debug
+
+      # --- Option B (si ça reste tendu) : ne construire qu'ARM64 ---
+      # - name: Build debug APK (arm64 only)
+      #   run: flutter build apk --debug --target-platform android-arm64
+
+      # --- Option C (alternative) : split per ABI (3 APKs plus petits) ---
+      # - name: Build debug APK (split per ABI)
+      #   run: flutter build apk --debug --split-per-abi
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          path: build/app/outputs/flutter-apk/*.apk

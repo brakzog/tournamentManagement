@@ -1,30 +1,36 @@
-
 buildscript {
-    ext.kotlin_version = '2.1.0'
     repositories {
         google()
         mavenCentral()
     }
-
     dependencies {
-        classpath 'com.android.tools.build:gradle:7.4.2'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-        classpath 'com.google.gms:google-services:4.4.0'
+        classpath 'com.android.tools.build:gradle:8.9.0'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.0"
+		classpath 'com.google.gms:google-services:4.4.0'
+
     }
 }
+
+def flutterSdkPath = {
+    def props = new Properties()
+    file("local.properties").withInputStream { props.load(it) }
+    def sdk = props.getProperty("flutter.sdk")
+    assert sdk != null : "flutter.sdk not set in local.properties"
+    return sdk
+}()
 
 allprojects {
     repositories {
         google()
         mavenCentral()
+        maven { url "$flutterSdkPath/bin/cache/artifacts/engine" }
+        maven { url "https://storage.googleapis.com/download.flutter.io" }
     }
 }
 
 rootProject.buildDir = '../build'
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
-}
-subprojects {
     project.evaluationDependsOn(':app')
 }
 
