@@ -3,17 +3,22 @@ name: Build Android Debug APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main, master, feature/v1.0 ]
+    branches: [ main, master ]
 
 jobs:
   build-android:
     runs-on: ubuntu-latest
     env:
-      # Double couche pour être sûr que Gradle/Java héritent bien de la RAM
       JAVA_TOOL_OPTIONS: -Xmx4g
       GRADLE_OPTS: -Xmx4g -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8"
     steps:
       - uses: actions/checkout@v4
+
+      # ðŸ”’ RÃ©injecte TON debug.keystore (toujours le mÃªme)
+      - name: Restore constant debug.keystore
+        run: |
+          mkdir -p ~/.android
+          echo "${{ secrets.DEBUG_KEYSTORE }}" | base64 -d > ~/.android/debug.keystore
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -31,20 +36,16 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      # Option A (par défaut)
-      - name: Build debug APK
-        run: flutter build apk --debug
+      # Build plus lÃ©ger (Ã©vite l'OOM)
+      - name: Build debug APK (arm64 only)
+        run: flutter build apk --debug --target-platform android-arm64
 
-      # --- Option B (si ça reste tendu) : ne construire qu'ARM64 ---
-      # - name: Build debug APK (arm64 only)
-      #   run: flutter build apk --debug --target-platform android-arm64
-
-      # --- Option C (alternative) : split per ABI (3 APKs plus petits) ---
-      # - name: Build debug APK (split per ABI)
-      #   run: flutter build apk --debug --split-per-abi
+      # Sanity check: affiche le cert du .apk produit
+      - name: Print APK cert fingerprint
+        run: $ANDROID_HOME/build-tools/35.0.0/apksigner verify --print-certs build/app/outputs/flutter-apk/app-debug.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          path: build/app/outputs/flutter-apk/*.apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
