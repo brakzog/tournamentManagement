@@ -1,31 +1,58 @@
 import 'package:tournament_management/models/match.dart';
 
 class Poule {
-  final String name; // poule A, B ...
+  final String name; // "Poule A", "Poule B", etc.
   final List<MatchTournament> matchList;
   final List<String> playerList;
 
-  Poule({
+  const Poule({
     required this.name,
     required this.matchList,
     required this.playerList,
   });
 
-  // Méthode pour convertir un objet Map en instance de Tournament.
-  factory Poule.fromMap(Map<String, dynamic> map) {
+  /// Lecture tolérante :
+  /// - joueurs : "playerList" OU "players"
+  /// - matchs  : "matchList"  OU "matchs" / "matches"
+  factory Poule.fromJson(Map<String, dynamic> json) {
+    final rawPlayers =
+        (json['playerList'] ?? json['players'] ?? const []) as List?;
+    final rawMatches =
+        (json['matchList'] ?? json['matchs'] ?? json['matches'] ?? const []) as List?;
+
     return Poule(
-      name: map['name'],
-      matchList: map["matchList"],
-      playerList: map['playerList'],
+      name: (json['name'] ?? '') as String,
+      playerList: rawPlayers?.map((e) => e.toString()).toList() ?? const <String>[],
+      matchList: rawMatches
+              ?.map((e) => e is Map<String, dynamic>
+                  ? MatchTournament.fromJson(e)
+                  : MatchTournament.fromJson(Map<String, dynamic>.from(e as Map)))
+              .toList() ??
+          const <MatchTournament>[],
     );
   }
 
-  // Ajoutez cette méthode à votre classe Poule pour convertir une poule en map
-  Map<String, dynamic> toJson() {
-    return {
-      'name': name,
-      'players': playerList.map((player) => player).toList(),
-      'matchs': matchList.map((match) => match.toJson()).toList(),
-    };
+  // Compat avec ton ancien code qui utilisait fromMap(...)
+  factory Poule.fromMap(Map<String, dynamic> map) => Poule.fromJson(map);
+
+  /// Clé canonique en écriture :
+  /// - "playerList" pour les joueurs
+  /// - "matchList" pour les matchs
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'playerList': playerList,
+        'matchList': matchList.map((m) => m.toJson()).toList(),
+      };
+
+  Poule copyWith({
+    String? name,
+    List<MatchTournament>? matchList,
+    List<String>? playerList,
+  }) {
+    return Poule(
+      name: name ?? this.name,
+      matchList: matchList ?? this.matchList,
+      playerList: playerList ?? this.playerList,
+    );
   }
 }

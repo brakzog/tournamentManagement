@@ -7,6 +7,8 @@ import 'package:tournament_management/models/end_tournament.dart';
 import 'package:tournament_management/models/match.dart';
 import 'package:tournament_management/models/poule.dart';
 import 'package:tournament_management/models/tournament.dart';
+import 'package:tournament_management/models/tournament_phase.dart';
+import 'package:tournament_management/models/tournament_date.dart';
 import 'package:tournament_management/utils.dart';
 import 'package:tournament_management/widgets/tournament_node.dart';
 
@@ -805,30 +807,30 @@ void showMatchArbreDialog(
         TournamentNode(2, endTournament.finalMatch.player2);
 
     final TournamentNode semiPlayer1Node =
-        getTournamentNode(3, endTournament, 0, TournamentPhase.semi, true);
+        getTournamentNode(3, endTournament, 0, TournamentPhase.SEMI_FINAL, true);
     final TournamentNode semiPlayer2Node =
-        getTournamentNode(4, endTournament, 0, TournamentPhase.semi, false);
+        getTournamentNode(4, endTournament, 0, TournamentPhase.SEMI_FINAL, false);
     final TournamentNode semiPlayer3Node =
-        getTournamentNode(5, endTournament, 1, TournamentPhase.semi, true);
+        getTournamentNode(5, endTournament, 1, TournamentPhase.SEMI_FINAL, true);
     final TournamentNode semiPlayer4Node =
-        getTournamentNode(6, endTournament, 1, TournamentPhase.semi, false);
+        getTournamentNode(6, endTournament, 1, TournamentPhase.SEMI_FINAL, false);
 
     final TournamentNode quarterPlayer1Node =
-        getTournamentNode(7, endTournament, 0, TournamentPhase.quart, true);
+        getTournamentNode(7, endTournament, 0, TournamentPhase.QUARTER_FINAL, true);
     final TournamentNode quarterPlayer2Node =
-        getTournamentNode(8, endTournament, 0, TournamentPhase.quart, false);
+        getTournamentNode(8, endTournament, 0, TournamentPhase.QUARTER_FINAL, false);
     final TournamentNode quarterPlayer3Node =
-        getTournamentNode(9, endTournament, 1, TournamentPhase.quart, true);
+        getTournamentNode(9, endTournament, 1, TournamentPhase.QUARTER_FINAL, true);
     final TournamentNode quarterPlayer4Node =
-        getTournamentNode(10, endTournament, 1, TournamentPhase.quart, false);
+        getTournamentNode(10, endTournament, 1, TournamentPhase.QUARTER_FINAL, false);
     final TournamentNode quarterPlayer5Node =
-        getTournamentNode(11, endTournament, 2, TournamentPhase.quart, true);
+        getTournamentNode(11, endTournament, 2, TournamentPhase.QUARTER_FINAL, true);
     final TournamentNode quarterPlayer6Node =
-        getTournamentNode(12, endTournament, 2, TournamentPhase.quart, false);
+        getTournamentNode(12, endTournament, 2, TournamentPhase.QUARTER_FINAL, false);
     final TournamentNode quarterPlayer7Node =
-        getTournamentNode(13, endTournament, 3, TournamentPhase.quart, true);
+        getTournamentNode(13, endTournament, 3, TournamentPhase.QUARTER_FINAL, true);
     final TournamentNode quarterPlayer8Node =
-        getTournamentNode(14, endTournament, 3, TournamentPhase.quart, false);
+        getTournamentNode(14, endTournament, 3, TournamentPhase.QUARTER_FINAL, false);
 
     graph.addEdge(winnerNode, finalPlayer1Node);
     graph.addEdge(winnerNode, finalPlayer2Node);
@@ -859,29 +861,51 @@ void showMatchArbreDialog(
   }
 
 
-  TournamentNode getTournamentNode(int id, EndTournament endTournament, int index, TournamentPhase phase, bool player1,) {
-    switch (phase) {
-      case TournamentPhase.quart:
-        if (endTournament.quarterFinalList.isEmpty) {
-          return TournamentNode(id, "");
-        }
-        if (player1) {
-          return TournamentNode(
-              id, endTournament.quarterFinalList[index].player1);
-        } else {
-          return TournamentNode(
-              id, endTournament.quarterFinalList[index].player2);
-        }
-      case TournamentPhase.semi:
-        if (endTournament.semiFinalist.isEmpty) {
-          return TournamentNode(id, "");
-        }
-        if (player1) {
-          return TournamentNode(id, endTournament.semiFinalist[index].player1);
-        } else {
-          return TournamentNode(id, endTournament.semiFinalist[index].player2);
-        }
+ TournamentNode getTournamentNode(
+  int id,
+  EndTournament endTournament,
+  int index,
+  TournamentPhase phase,
+  bool player1
+) {
+  switch (phase) {
+    case TournamentPhase.FINAL: {
+      final m = endTournament.finalMatch;
+      return _buildNodeFromMatch(m, id, player1);
+    }
+    case TournamentPhase.SMALL_FINAL: {
+      final m = endTournament.smallFinalMatch;
+      return _buildNodeFromMatch(m, id, player1);
+    }
+    case TournamentPhase.SEMI_FINAL: {
+      if (index >= 0 && index < endTournament.semiFinalist.length) {
+        final m = endTournament.semiFinalist[index];
+        return _buildNodeFromMatch(m, id, player1);
+      }
+      throw RangeError('index demi-finale hors bornes: $index');
+    }
+    case TournamentPhase.QUARTER_FINAL: {
+      if (index >= 0 && index < endTournament.quarterFinalList.length) {
+        final m = endTournament.quarterFinalList[index];
+        return _buildNodeFromMatch(m, id, player1);
+      }
+      throw RangeError('index quart de finale hors bornes: $index');
+    }
+    case TournamentPhase.GROUP: {
+      throw StateError('La phase GROUP n\'a pas de TournamentNode dans EndTournament');
     }
   }
+
+  // Sécurité (ne devrait pas arriver)
+  throw StateError('Phase inconnue: $phase');
+}
+
+TournamentNode _buildNodeFromMatch(MatchTournament m, int id, bool isPlayer1) {
+  final name = isPlayer1 ? m.player1 : m.player2;
+  final score = m.score;
+
+  // ⚠️ Adapte aux paramètres RÉELS de ton widget TournamentNode
+  return TournamentNode(id, name);
+}
 }
 

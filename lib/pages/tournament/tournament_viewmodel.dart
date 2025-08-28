@@ -8,6 +8,7 @@ import 'package:tournament_management/models/end_tournament.dart';
 import 'package:tournament_management/models/match.dart';
 import 'package:tournament_management/models/poule.dart';
 import 'package:tournament_management/models/tournament.dart';
+import 'package:tournament_management/models/tournament_date.dart';
 import 'package:tournament_management/pages/detail_tournament/detail_tournament.dart';
 
 class TournamentViewmodel with ChangeNotifier {
@@ -107,7 +108,7 @@ class TournamentViewmodel with ChangeNotifier {
     //Recuperation de l'ensemble des tournois présents ou passés ou n'ayant pas pu avoir lieu
     tournaments.add(tournament);
     //Récupération de l'ensemble des tournois en cours
-    if (tournament.tournamentDate.beginingDate != null &&
+    if (tournament.tournamentDate.start != null &&
             tournament.pouleList.isEmpty ||
         tournament.finalMatchList.finalMatch.score.isEmpty) {
       isChecked = addInProgressTournament(tournament, isChecked, inProgress);
@@ -122,7 +123,7 @@ class TournamentViewmodel with ChangeNotifier {
       isChecked = addPastTournament(tournament, isChecked, past);
     }
     //Récupération de l'ensemble des tournois annulés ou pas joués
-    if (!isChecked && tournament.tournamentDate.beginingDate == null) {
+    if (!isChecked && tournament.tournamentDate.start == null) {
       cancel.add(tournament);
     }
     if (!isChecked) {
@@ -151,8 +152,8 @@ class TournamentViewmodel with ChangeNotifier {
     final dateMap = mapValue["tournamentDate"] as Map<Object?, Object?>;
 
     TournamentDate tournamentDate = TournamentDate(
-      beginingDate: "${dateMap["beginingDate"]}",
-      endDate: "${dateMap["endDate"]}",
+      start: "${dateMap["beginingDate"]}",
+      end: "${dateMap["endDate"]}",
     );
     
     return tournamentDate;

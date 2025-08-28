@@ -76,8 +76,8 @@ class DetailTournamentViewModel extends ChangeNotifier{
   }
 
   String calculateDate(String phase) {
-    DateTime startDate = DateFormat("dd/MM/yyyy").parse(tournament!.tournamentDate.beginingDate!);
-    DateTime endDate = DateFormat("dd/MM/yyyy").parse(tournament!.tournamentDate.endDate!);
+    DateTime startDate = DateFormat("dd/MM/yyyy").parse(tournament!.tournamentDate.start!);
+    DateTime endDate = DateFormat("dd/MM/yyyy").parse(tournament!.tournamentDate.end!);
 
 
     int totalDays = endDate.difference(startDate).inDays;

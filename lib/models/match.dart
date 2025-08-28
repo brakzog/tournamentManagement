@@ -1,8 +1,9 @@
 class MatchTournament {
-  String player1; // can also be a name for team player
+  // ⚠️ Reste volontairement mutable (ton code met à jour .score in-place)
+  String player1; // peut être un nom d'équipe
   String player2;
-  String score;
-  String date;
+  String score;    // format conseillé : "6-4;3-6;7-5"
+  String date;     // garde String pour compat avec ton code ; sinon DateTime
   String location;
 
   MatchTournament({
@@ -13,24 +14,42 @@ class MatchTournament {
     required this.location,
   });
 
-  factory MatchTournament.fromMap(Map<String, dynamic> map) {
+  // Lecture tolérante : accepte 'fromMap' historique et JSON standard
+  factory MatchTournament.fromJson(Map<String, dynamic> json) {
     return MatchTournament(
-      player1: map['player1'],
-      player2: map['player2'],
-      score: map['score'],
-      date: map['date'],
-      location: map['location']
+      player1: (json['player1'] ?? '') as String,
+      player2: (json['player2'] ?? '') as String,
+      score: (json['score'] ?? '') as String,
+      date: (json['date'] ?? '') as String,
+      location: (json['location'] ?? '') as String,
     );
   }
 
-// Méthode toJson dans la classe Match
-  Map<String, dynamic> toJson() {
-    return {
-      'player1': player1,
-      'player2': player2,
-      'score': score,
-      'date': date,
-      'location': location,
-    };
+  // Compat avec ton ancien code qui utilisait fromMap(...)
+  factory MatchTournament.fromMap(Map<String, dynamic> map) =>
+      MatchTournament.fromJson(map);
+
+  Map<String, dynamic> toJson() => {
+        'player1': player1,
+        'player2': player2,
+        'score': score,
+        'date': date,
+        'location': location,
+      };
+
+  MatchTournament copyWith({
+    String? player1,
+    String? player2,
+    String? score,
+    String? date,
+    String? location,
+  }) {
+    return MatchTournament(
+      player1: player1 ?? this.player1,
+      player2: player2 ?? this.player2,
+      score: score ?? this.score,
+      date: date ?? this.date,
+      location: location ?? this.location,
+    );
   }
 }
