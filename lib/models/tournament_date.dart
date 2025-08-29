@@ -1,38 +1,21 @@
 class TournamentDate {
-  /// Dates au format ISO "yyyy-MM-dd" ou "dd/MM/yyyy" selon ton UI actuelle.
-  /// Si tu préfères, remplace par des DateTime et formate à l’affichage.
-  final String start; // début du tournoi
-  final String? end;  // fin (optionnel)
-  final String? registrationDeadline; // date limite d'inscription (optionnel)
+  final String start;
+  final String? end;
 
-  const TournamentDate({
-    required this.start,
-    this.end,
-    this.registrationDeadline,
-  });
+  const TournamentDate({ required this.start, this.end });
 
-  factory TournamentDate.fromJson(Map<String, dynamic> json) => TournamentDate(
-        start: (json['start'] ?? '') as String,
-        end: json['end'] as String?,
-        registrationDeadline: json['registrationDeadline'] as String?,
-      );
+  factory TournamentDate.fromJson(Map<String, dynamic> json) {
+    final s = (json['beginingDate'] ?? json['start'] ?? '') as String;
+    final e = (json['endDate'] ?? json['end']) as String?;
+    return TournamentDate(start: s, end: e);
+  }
 
   Map<String, dynamic> toJson() => {
-        'start': start,
-        if (end != null) 'end': end,
-        if (registrationDeadline != null)
-          'registrationDeadline': registrationDeadline,
-      };
+    // On écrit avec les mêmes clés que ton code historique
+    'beginingDate': start,
+    if (end != null && end!.isNotEmpty) 'endDate': end,
+  };
 
-  TournamentDate copyWith({
-    String? start,
-    String? end,
-    String? registrationDeadline,
-  }) {
-    return TournamentDate(
-      start: start ?? this.start,
-      end: end ?? this.end,
-      registrationDeadline: registrationDeadline ?? this.registrationDeadline,
-    );
-    }
+  TournamentDate copyWith({ String? start, String? end }) =>
+      TournamentDate(start: start ?? this.start, end: end ?? this.end);
 }

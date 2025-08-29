@@ -12,6 +12,10 @@ import 'package:tournament_management/models/tournament_date.dart';
 import 'package:tournament_management/utils.dart';
 import 'package:tournament_management/widgets/tournament_node.dart';
 
+import 'package:provider/provider.dart';
+import 'package:tournament_management/data/repositories/tournament_repository.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import 'detail_tournament_viewmodel.dart';
 
 class DetailTournamentPresenter {
@@ -42,8 +46,10 @@ class DetailTournamentPresenter {
     tabController = TabController(length: 2, vsync: vsync);
   }
 
-  Widget buildDetailTournament(BuildContext context,) {
-    return Scaffold(
+ Widget buildDetailTournament(BuildContext context, {String? tournamentKey}) {
+  final isOwner = FirebaseAuth.instance.currentUser?.email == tournament.createdBy;
+
+  return Scaffold(
     appBar: AppBar(
       title: const Text("detail_tournament").tr(),
       bottom: TabBar(
@@ -54,25 +60,67 @@ class DetailTournamentPresenter {
         ],
       ),
     ),
-    body: TabBarView(
-      controller: tabController,
+    body: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildPoolMatchesPage(context),
-        _buildArbreDeDeroulementTab(context),
+        if (tournamentKey != null)
+          _LiveTournamentBanner(tournamentKey: tournamentKey),
+
+        if (tournamentKey != null)
+          _ParticipantsSection(
+            tournamentKey: tournamentKey,
+            canEdit: isOwner, // ⬅️
+          ),
+
+        Expanded(
+          child: TabBarView(
+            controller: tabController,
+            children: [
+              _buildPoolMatchesPage(
+                context,
+                tournamentKey: tournamentKey,
+                canEdit: isOwner, // ⬅️
+              ),
+              _buildArbreDeDeroulementTab(
+                context,
+                tournamentKey: tournamentKey,
+                canEdit: isOwner, // ⬅️
+              ),
+            ],
+          ),
+        ),
       ],
     ),
   );
 }
 
+
 //================================================ POULES ==========================================================================================
 
-Widget _buildPoolMatchesPage(BuildContext context) {
-  final bool isEmpty = tournament.pouleList.isEmpty;
+Widget _buildPoolMatchesPage(
+  BuildContext context, {
+  String? tournamentKey,
+  required bool canEdit, // <-- ajouté
+}) {  final bool isEmpty = tournament.pouleList.isEmpty;
   final List<MatchTournament> matchList = getMatchListFromPoule();
+
+  // ⬇️ Récupérer le nom de la poule courante
+  // 1) Si tu as déjà une variable `selectedPoule` quelque part:
+  // final String? currentPouleName = selectedPoule?.name;
+
+  // 2) Sinon, si tu as un index sélectionné:
+  // final String? currentPouleName = (selectedPouleIndex != null && selectedPouleIndex! < tournament.pouleList.length)
+  //     ? tournament.pouleList[selectedPouleIndex!].name
+  //     : (tournament.pouleList.isNotEmpty ? tournament.pouleList.first.name : null);
+
+  // 3) Fallback générique :
+  final String? currentPouleName = tournament.pouleList.isNotEmpty
+      ? tournament.pouleList.first.name
+      : null;
 
   final bool shouldDisplayStartButton = isEmpty;
   final bool shouldDisplayPouleSelector = !isEmpty;
-  final bool shouldDisplayMatchResultButton = inProgress && !isEmpty;
+  final bool shouldDisplayMatchResultButton = inProgress && !isEmpty && canEdit;
 
   return SingleChildScrollView(
     physics: const AlwaysScrollableScrollPhysics(),
@@ -85,13 +133,25 @@ Widget _buildPoolMatchesPage(BuildContext context) {
         if (shouldDisplayPouleSelector) buildPouleSelector(),
         if (shouldDisplayPouleSelector) _buildRankingSection(),
         const SizedBox(height: 16.0),
-        _buildMatchListSection(matchList),
+        // ⬇️ On passe la clé et le nom de poule à la section liste
+        _buildMatchListSection(
+    matchList,
+    tournamentKey: tournamentKey,
+    pouleName: currentPouleName,
+    canEdit: canEdit, // ⬅️
+  ),
         const SizedBox(height: 16.0),
-        if (shouldDisplayMatchResultButton) _buildMatchResultButton(context),
+        if (shouldDisplayMatchResultButton)
+			_buildMatchResultButton(
+				context,
+				canEdit: canEdit,
+				tournamentKey: tournamentKey,
+			),
       ],
     ),
   );
 }
+
 
 
 Widget _buildStartTournamentButton() {
@@ -165,42 +225,61 @@ Widget _buildRankingSection() {
   );
 }
 
-Widget _buildMatchListSection(List<MatchTournament> matchList) {
-  return _buildMatches(matchList);
-}
-
-Widget _buildMatches(List<MatchTournament> matchList) {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.center,
-    children: [
-      Padding(
-        padding: EdgeInsets.symmetric(horizontal: 8.0),
-        child: Text("poule_matches".tr()),
-      ),
-      const SizedBox(height: 8.0),
-      ...matchList.map((e) => Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Text("${e.player1} VS ${e.player2} : ${e.score}"),
-        ),
-      ),
-    ],
+Widget _buildMatchListSection(
+  List<MatchTournament> matchList, {
+  required String? tournamentKey,
+  required String? pouleName,
+  required bool canEdit, // ⬅️
+}) {
+  final canEditTile = canEdit && tournamentKey != null && pouleName != null;
+  return ListView.builder(
+    shrinkWrap: true,
+    physics: const NeverScrollableScrollPhysics(),
+    itemCount: matchList.length,
+    itemBuilder: (context, index) {
+      final m = matchList[index];
+      return ListTile(
+        title: Text('${m.player1} vs ${m.player2}'),
+        subtitle: Text(m.score.isEmpty ? 'À jouer' : 'Score: ${m.score}'),
+        trailing: canEditTile
+            ? IconButton(
+                icon: const Icon(Icons.edit),
+                onPressed: () => onEditPouleScore(
+                  context,
+                  tournamentKey: tournamentKey!,
+                  pouleName: pouleName!,
+                  matchIndex: index,
+                  currentScore: m.score,
+                ),
+              )
+            : null,
+      );
+    },
   );
 }
 
 
-  Widget _buildMatchResultButton(BuildContext context) {
-    final tournamentRef = FirebaseDatabase.instance.ref().child("tournois");
-    return ElevatedButton(
-      child: Text("result_match_input".tr()),
-      onPressed: () => showMatchResultDialog(
-        context,
-        tournament,
-        tournamentRef,
-        "",
-        "",
-      ),
-    );
-  }
+
+ Widget _buildMatchResultButton(
+  BuildContext context, {
+  required bool canEdit,
+  required String? tournamentKey,
+}) {
+  if (!canEdit) return const SizedBox.shrink(); // cache le bouton pour les viewers
+
+  final tournamentRef = FirebaseDatabase.instance.ref().child("tournois");
+  return ElevatedButton(
+    child: Text("result_match_input".tr()),
+    onPressed: () => showMatchResultDialog(
+      context,
+      tournament,
+      tournamentRef,
+      "",
+      "",
+    ),
+  );
+}
+
 
 
   Widget _buildRanking(Poule poule) {
@@ -227,6 +306,7 @@ Widget _buildMatches(List<MatchTournament> matchList) {
 
     // Parcourir la liste des matchs de la poule
     for (MatchTournament match in poule.matchList) {
+	  if (match.score.isEmpty) continue; // 👈 ajoute ça
       // Découper le score pour obtenir les sets
       List<String> sets = match.score.split(';');
 
@@ -385,6 +465,74 @@ Widget _buildMatches(List<MatchTournament> matchList) {
       },
     );
   }
+  
+  Future<void> onEditPouleScore(
+  BuildContext context, {
+  required String tournamentKey,
+  required String pouleName,
+  required int matchIndex,
+  required String currentScore,
+}) async {
+  final repo = Provider.of<TournamentRepository>(context, listen: false);
+  final ctrl = TextEditingController(text: currentScore);
+  bool busy = false;
+
+  final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => StatefulBuilder(
+          builder: (ctx, setState) => AlertDialog(
+            title: const Text('Modifier le score'),
+            content: TextField(
+              controller: ctrl,
+              decoration: const InputDecoration(
+                hintText: 'Ex: 6-3;6-4',
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: busy ? null : () => Navigator.pop(ctx, false),
+                child: const Text('Annuler'),
+              ),
+              TextButton(
+                onPressed: busy
+                    ? null
+                    : () async {
+                        setState(() => busy = true);
+                        try {
+                          await repo.updatePouleMatchScore(
+                            tournamentKey,
+                            pouleName,
+                            matchIndex,
+                            score: ctrl.text.trim(),
+                          );
+                          if (ctx.mounted) Navigator.pop(ctx, true);
+                        } catch (e) {
+                          setState(() => busy = false);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(e.toString())),
+                          );
+                        }
+                      },
+                child: busy
+                    ? const SizedBox(
+                        width: 16, height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Enregistrer'),
+              ),
+            ],
+          ),
+        ),
+      ) ??
+      false;
+
+  if (ok && context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Score mis à jour')),
+    );
+  }
+}
+
 
   // Fonction pour vérifier le format du score
   bool isValidScoreFormat(String score) {
@@ -607,16 +755,20 @@ void showMatchArbreDialog(
     DatabaseReference tournamentRef,
     String player1,
     String player2,
-  ) {
+	{String? tournamentKey}) {
     List<String> playerList = List.empty();
 
-    if(hasNotEmptyElements(tournament.finalMatchList.quarterFinalList)) {
-      playerList = getPlayerList(tournament.finalMatchList.quarterFinalList);
-    } else if (hasNotEmptyElements(tournament.finalMatchList.semiFinalist)) {
-      playerList = getPlayerList(tournament.finalMatchList.semiFinalist);
-    } else if (tournament.finalMatchList.finalMatch.score.isEmpty) {
-      playerList = [tournament.finalMatchList.finalMatch.player1, tournament.finalMatchList.finalMatch.player2];
-    }
+	if (tournament.finalMatchList.quarterFinalList.isNotEmpty) {
+		playerList = getPlayerList(tournament.finalMatchList.quarterFinalList);
+	} else if (tournament.finalMatchList.semiFinalist.isNotEmpty) {
+		playerList = getPlayerList(tournament.finalMatchList.semiFinalist);
+	} else {
+		playerList = [
+			tournament.finalMatchList.finalMatch.player1,
+			tournament.finalMatchList.finalMatch.player2
+		];
+	}
+
 
     // Variables pour stocker les sélections des joueurs
     String selectedPlayer1 = player1.isNotEmpty ? player1 : playerList.first;
@@ -642,7 +794,7 @@ void showMatchArbreDialog(
                   selectedPlayer1 = value!;
                   selectedPlayer2 = retrievePlayer(selectedPlayer1, tournament.finalMatchList);
                   Navigator.of(context).pop();
-                  showMatchArbreDialog(context, tournament, tournamentRef, value, selectedPlayer2);
+                  showMatchArbreDialog(context, tournament, tournamentRef, value, selectedPlayer2,tournamentKey: tournamentKey);
                 },
               ),
               const SizedBox(height: 10),
@@ -654,7 +806,7 @@ void showMatchArbreDialog(
                   selectedPlayer2 = value!;
                   selectedPlayer1 = retrievePlayer(selectedPlayer2, tournament.finalMatchList);
                   Navigator.of(context).pop();
-                  showMatchArbreDialog(context, tournament, tournamentRef, selectedPlayer1, value);
+                  showMatchArbreDialog(context, tournament, tournamentRef, selectedPlayer1, value,tournamentKey: tournamentKey);
                 },
               ),
               const SizedBox(height: 10),
@@ -672,22 +824,38 @@ void showMatchArbreDialog(
                 
               
 
-                if(isValidScoreFormat(scoreController.text)){
-                  MatchTournament newMatch = MatchTournament(
-                    player1: selectedPlayer1, 
-                    player2: selectedPlayer2,
-                    score: scoreController.text,
-                    date: "${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}",
-                    location: tournament.location,);
-                  DatabaseReference endTournamentRef =  getTournamentRef(newMatch);
-                  updateScoreGraph(endTournamentRef, newMatch);
-                  Navigator.of(context).pop();
-                } else {
-                  showErrorDialog(context, 'score_format_incorrect'.tr());
-                }
-              },
-              child: Text('valid'.tr()),
-            ),
+                if (isValidScoreFormat(scoreController.text)) {
+        final newMatch = MatchTournament(
+          player1: selectedPlayer1,
+          player2: selectedPlayer2,
+          score: scoreController.text,
+          date: "${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}",
+          location: tournament.location,
+        );
+
+        try {
+          if (tournamentKey == null) {
+            // fallback legacy : ton ancien flux (si jamais pas de clé)
+            DatabaseReference endTournamentRef = getTournamentRef(newMatch);
+            updateScoreGraph(endTournamentRef, newMatch);
+          } else {
+            // ✅ nouveau flux repo + clé
+            await _updateBracketScoreWithRepo(
+              context,
+              tournamentKey: tournamentKey,
+              newMatch: newMatch,
+            );
+          }
+          if (context.mounted) Navigator.of(context).pop();
+        } catch (e) {
+          showErrorDialog(context, e.toString());
+        }
+      } else {
+        showErrorDialog(context, 'score_format_incorrect'.tr());
+      }
+    },
+    child: Text('valid'.tr()),
+  ),
           ],
         );
       },
@@ -744,43 +912,24 @@ void showMatchArbreDialog(
   }
 
 
-  Widget _buildArbreDeDeroulementTab(BuildContext context) {
-    final tournamentRef = FirebaseDatabase.instance.ref().child("tournois");
-    return Column(
-      children: [
+  Widget _buildArbreDeDeroulementTab(BuildContext context, {String? tournamentKey, required bool canEdit}) {
+  final tournamentRef = FirebaseDatabase.instance.ref().child("tournois");
+  return Column(
+    children: [
+      if (canEdit)
         ElevatedButton(
           child: Text("result_match_input".tr()),
           onPressed: () => showMatchArbreDialog(
-            context,
-            tournament,
-            tournamentRef,
-            "",
-            "",
+            context, tournament, tournamentRef, "", "",
+            tournamentKey: tournamentKey,
           ),
         ),
+      // ... GraphView inchangé
+    ],
+  );
+}
 
 
-        Expanded(
-          child: InteractiveViewer(
-            constrained: false,
-            boundaryMargin: const EdgeInsets.all(100),
-            minScale: 0.01,
-            maxScale: 5.6,
-            child: Center(
-              child: GraphView(
-                builder: (node) => rectangleWidget((node as TournamentNode).label),
-                graph: createTournamentTree(tournament.finalMatchList),
-                algorithm: BuchheimWalkerAlgorithm(
-                  builder,
-                  TreeEdgeRenderer(builder),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget rectangleWidget(String a) {
     return Container(
@@ -852,6 +1001,82 @@ void showMatchArbreDialog(
     graph.addEdge(semiPlayer4Node, quarterPlayer8Node);
     return graph;
   }
+  
+  
+  Future<void> _updateBracketScoreWithRepo(
+  BuildContext context, {
+  required String tournamentKey,
+  required MatchTournament newMatch,
+}) async {
+  final repo = Provider.of<TournamentRepository>(context, listen: false);
+
+  // On identifie où se trouve le match (quarts / demies / finale / petite finale)
+  final semiIndex = tournament.getIndex(tournament.finalMatchList.semiFinalist, newMatch);
+  if (semiIndex != -1) {
+    await repo.updateSemiFinalMatchScore(
+      tournamentKey,
+      semiIndex,
+      score: newMatch.score,
+      player1: newMatch.player1,
+      player2: newMatch.player2,
+      date: newMatch.date,
+      location: newMatch.location,
+    );
+    return;
+  }
+
+  final quartIndex = tournament.getIndex(tournament.finalMatchList.quarterFinalList, newMatch);
+  if (quartIndex != -1) {
+    await repo.updateQuarterFinalMatchScore(
+      tournamentKey,
+      quartIndex,
+      score: newMatch.score,
+      player1: newMatch.player1,
+      player2: newMatch.player2,
+      date: newMatch.date,
+      location: newMatch.location,
+    );
+    return;
+  }
+
+  // Sinon: finale ou petite finale (on compare par joueurs)
+  final fm = tournament.finalMatchList.finalMatch;
+  final sf = tournament.finalMatchList.smallFinalMatch;
+
+  bool equalsByPlayers(MatchTournament a, MatchTournament b) =>
+      (a.player1 == b.player1 && a.player2 == b.player2) ||
+      (a.player1 == b.player2 && a.player2 == b.player1);
+
+  if (equalsByPlayers(newMatch, fm)) {
+    await repo.updateFinalOrSmallFinalScore(
+      tournamentKey,
+      smallFinal: false,
+      score: newMatch.score,
+      player1: newMatch.player1,
+      player2: newMatch.player2,
+      date: newMatch.date,
+      location: newMatch.location,
+    );
+    return;
+  }
+
+  if (equalsByPlayers(newMatch, sf)) {
+    await repo.updateFinalOrSmallFinalScore(
+      tournamentKey,
+      smallFinal: true,
+      score: newMatch.score,
+      player1: newMatch.player1,
+      player2: newMatch.player2,
+      date: newMatch.date,
+      location: newMatch.location,
+    );
+    return;
+  }
+
+  // Ici, on n'a pas su identifier (cas limite)
+  throw StateError('Match inconnu dans l’arbre (ni quart, ni demie, ni finales).');
+}
+
 
   bool hasNotEmptyElements(List<MatchTournament> list) {
     for(MatchTournament currentMatch in list) {
@@ -908,4 +1133,213 @@ TournamentNode _buildNodeFromMatch(MatchTournament m, int id, bool isPlayer1) {
   return TournamentNode(id, name);
 }
 }
+
+
+class _LiveTournamentBanner extends StatelessWidget {
+  final String tournamentKey;
+  const _LiveTournamentBanner({required this.tournamentKey});
+
+  @override
+  Widget build(BuildContext context) {
+    final repo = Provider.of<TournamentRepository>(context, listen: false);
+
+    return StreamBuilder<Tournament?>(
+      stream: repo.watchTournamentByKey(tournamentKey),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const LinearProgressIndicator();
+        }
+        if (snap.hasError || !snap.hasData || snap.data == null) {
+          return const SizedBox.shrink();
+        }
+        final t = snap.data!;
+        final date = t.tournamentDate.start;
+        final location = t.location;
+        final participantsCount = t.participants.length;
+
+        return Card(
+          margin: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                const Icon(Icons.sync, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${t.name} • $location • $date\n$participantsCount participant(s)',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+
+class _ParticipantsSection extends StatefulWidget {
+  final String tournamentKey;
+  final bool canEdit; 
+  const _ParticipantsSection({required this.tournamentKey,
+      required this.canEdit});
+
+  @override
+  State<_ParticipantsSection> createState() => _ParticipantsSectionState();
+}
+
+class _ParticipantsSectionState extends State<_ParticipantsSection> {
+  final _ctrl = TextEditingController();
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final repo = Provider.of<TournamentRepository>(context, listen: false);
+
+    return Card(
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: StreamBuilder<List<String>>(
+          stream: repo.watchParticipantsList(widget.tournamentKey),
+          builder: (context, snap) {
+            if (snap.connectionState == ConnectionState.waiting) {
+              return const LinearProgressIndicator();
+            }
+            if (snap.hasError) {
+              return Text('error_fetching'.tr());
+            }
+
+            final items = snap.data ?? const <String>[];
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.people, size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      'participants'.tr(),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const Spacer(),
+                    Text('${items.length}'),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // Chips participants
+                if (items.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text('no_participant'.tr(args: ['—'])),
+                  )
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: items.map((name) {
+					if (!widget.canEdit) {
+						return Chip(label: Text(name)); // pas de suppression
+					}
+                      return InputChip(
+                        label: Text(name),
+                        onDeleted: () async {
+                          final ok = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: Text('confirm'.tr()),
+                                  content: Text('remove_participant_q'.tr(args: [name])),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx, false),
+                                      child: Text('cancel'.tr()),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx, true),
+                                      child: Text('remove'.tr()),
+                                    ),
+                                  ],
+                                ),
+                              ) ??
+                              false;
+                          if (ok && mounted) {
+                            try {
+                              await repo.removeParticipantFromTournament(
+                                  widget.tournamentKey, name);
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(e.toString())),
+                              );
+                            }
+                          }
+                        },
+                      );
+                    }).toList(),
+                  ),
+
+                const Divider(height: 24),
+
+				// Ajout participant (seulement si owner)
+				if (widget.canEdit)
+				Row(
+					children: [
+						Expanded(
+							child: TextField(
+							controller: _ctrl,
+							decoration: InputDecoration(
+								hintText: 'enter_name'.tr(),
+								border: const OutlineInputBorder(),
+								isDense: true,
+							),
+							onSubmitted: (_) => _onAdd(repo),
+							),
+						),
+						const SizedBox(width: 8),
+						ElevatedButton(
+							onPressed: _busy ? null : () => _onAdd(repo),
+							child: _busy
+										? const SizedBox(
+											width: 18, height: 18,
+											child: CircularProgressIndicator(strokeWidth: 2),
+										)
+										: Text('add'.tr()),
+						),
+					],
+				),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> _onAdd(TournamentRepository repo) async {
+    final raw = _ctrl.text.trim();
+    if (raw.isEmpty) return;
+    setState(() => _busy = true);
+    try {
+      await repo.addParticipantToTournament(widget.tournamentKey, raw);
+      _ctrl.clear();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+}
+
 

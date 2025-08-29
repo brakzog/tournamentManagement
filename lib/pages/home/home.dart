@@ -39,18 +39,18 @@ class HomePage extends StatelessWidget {
           }
         },
         items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.sports_score),
-            label: "my_tournaments".tr(),
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people),
-            label: "participation".tr(),
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.logout),
-            label: "logout".tr(),
-          ),
+           BottomNavigationBarItem(
+			icon: const Icon(Icons.sports_score),
+			label: 'my_tournaments'.tr(),
+		  ),
+		  BottomNavigationBarItem(
+			icon: const Icon(Icons.event),
+			label: 'my_calendar'.tr(),
+		  ),
+		  BottomNavigationBarItem(
+			icon: const Icon(Icons.logout),
+			label: 'logout'.tr(),
+		  ),
         ],
       ),
       floatingActionButton: FloatingActionButton(

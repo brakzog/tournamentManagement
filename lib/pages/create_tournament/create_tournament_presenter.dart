@@ -65,61 +65,28 @@ class CreateTournamentPresenter {
   }
   
 
-  void submitTournament(BuildContext context) {
-    String tournamentName = viewModel.tournamentNameController.text;
-    String location = viewModel.locationController.text;
+Future<void> submitTournament(BuildContext context) async {
+  final tournamentName = viewModel.tournamentNameController.text.trim();
+  final location = viewModel.locationController.text.trim();
+  final createdBy = (FirebaseAuth.instance.currentUser?.email) ?? 'anonymous';
 
-    // should always be not null as the user is already connected from here
-    String createdBy = (FirebaseAuth.instance.currentUser!.email)!;
-
-    if (tournamentName.isEmpty ||
-        location.isEmpty ||
-        viewModel.tournamentDate.isEmpty) {
-      showErrorDialog(context,
-          "missing_field".tr());
-      return;
-    }
-
-    if(viewModel.guestList.length < 8) {
-      showErrorDialog(context, "not_enough_people".tr());
-      return;
-    }
-
-    // Get reference to tournament table from firebase
-    DatabaseReference tournamentRef =
-        FirebaseDatabase.instance.ref().child("tournois");
-
-    // Get the key chosen from this table (should check its unicity)
-    String key = '$tournamentName-${viewModel.eventTypeController.text}_${Random().nextInt(5000)}';
-
-    //At this point, we have not already participant list
-    //(they have not confirmed yet their participation)
-    Map<String, dynamic> tournamentData = {
-      "createdBy": createdBy,
-      "location": location,
-      "participants": viewModel.guestList,
-      "sportEvent": viewModel.eventTypeController.text,
-      "tournamentDate": {
-        "beginingDate": viewModel.tournamentDate,
-        "endDate": viewModel.endTournamentDate,
-      },
-    };
-
-    // Enregistrez le tournoi dans la base de données en utilisant la clé composite
-    tournamentRef.child(key).set(tournamentData).then((value) {
-      // Tournoi enregistré avec succès
-      // Vous pouvez ajouter d'autres actions ici si nécessaire
-      if (kDebugMode) {
-        print("Tournoi enregistré avec succès");
-      }
-      viewModel.resetFields();
-      showDialogTournament(context);
-    }).catchError((error) {
-      // Gestion des erreurs
-      if (kDebugMode) {
-        print("Erreur lors de l'enregistrement du tournoi : $error");
-      }
-    });
+  if (tournamentName.isEmpty || location.isEmpty || viewModel.tournamentDate.isEmpty) {
+    showErrorDialog(context, "missing_field".tr());
+    return;
   }
+  if (viewModel.guestList.length < 8) {
+    showErrorDialog(context, "not_enough_people".tr());
+    return;
+  }
+
+  final key = await viewModel.createTournament(createdBy: createdBy);
+
+  if (key != null && context.mounted) {
+    viewModel.resetFields();
+    showDialogTournament(context);
+  } else if (context.mounted) {
+    showErrorDialog(context, viewModel.error ?? "Erreur inconnue");
+  }
+}
 
 }

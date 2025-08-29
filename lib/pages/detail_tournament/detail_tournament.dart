@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:tournament_management/models/tournament.dart';
 
+
+
 import 'detail_tournament_presenter.dart';
 import 'detail_tournament_viewmodel.dart';
 
@@ -8,11 +10,13 @@ import 'detail_tournament_viewmodel.dart';
 class DetailTournament extends StatefulWidget {
 
   final bool inProgress; 
-  final Tournament tournament; 
+  final Tournament tournament;
+  final String? tournamentKey;
 
   DetailTournament({
     required this.inProgress,
     required this.tournament,
+	required this.tournamentKey, 
 
   });
 
@@ -42,6 +46,6 @@ class _DetailTournamentPageState extends State<DetailTournament> with SingleTick
 
   @override
   Widget build(BuildContext context) {
-    return presenter.buildDetailTournament(context);
+    return presenter.buildDetailTournament(context, tournamentKey: widget.tournamentKey);
   }
 }    

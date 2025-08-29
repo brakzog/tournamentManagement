@@ -5,37 +5,48 @@ import 'package:provider/provider.dart';
 import 'participation_presenter.dart';
 import 'participation_viewmodel.dart';
 
-class ParticipationView extends StatelessWidget{
-    const ParticipationView({super.key});
+class ParticipationView extends StatelessWidget {
+  const ParticipationView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = Provider.of<ParticipationViewModel>(context, listen: true);
-    final presenter = ParticipationPresenter(viewModel);
-    return Column(children: [
-       ExpansionTile(
-        title: Text("my_calendar").tr(),
-        children: [presenter.buildMyCalendar(context)],
-      ),
-      ExpansionTile(
-        title: Text("my_result").tr(),
-        children: [presenter.buildMyResult(context)],
-      )
+    final vm = context.watch<ParticipationViewModel>();
+    final presenter = ParticipationPresenter(vm);
 
-
-
-      /*Text("my_calendar").tr(),
-      presenter.buildMyCalendar(context),
-      Container(
-        margin: EdgeInsets.symmetric(vertical: 10), // Espacement vertical
-        height: 1, // Épaisseur de la ligne
-        width: double.infinity, // Prend toute la largeur disponible
-        color: Colors.grey, // Couleur de la ligne
-      ),
-      Text("my_result").tr(),
-      presenter.buildMyResult(context),
-    */]);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ExpansionTile(
+          title: Text("my_calendar").tr(),
+          childrenPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          children: [
+            presenter.buildMyCalendar(context),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => presenter.openFullList(context, played: false),
+                child: Text('see_all').tr(),
+              ),
+            ),
+          ],
+        ),
+        ExpansionTile(
+          title: Text("my_result").tr(),
+          childrenPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          children: [
+            presenter.buildMyResult(context),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => presenter.openFullList(context, played: true),
+                child: Text('see_all').tr(),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
   }
-
- 
-}    
+}
