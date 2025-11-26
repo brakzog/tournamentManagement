@@ -1,7 +1,7 @@
 import 'package:tournament_management/models/match.dart';
 
 class EndTournament {
-  // Reste mutable, ton code met à jour les scores in-place
+  // Reste mutable, ton code met ? jour les scores in-place
   MatchTournament finalMatch;
   MatchTournament smallFinalMatch;
   List<MatchTournament> semiFinalist;

@@ -38,7 +38,7 @@ class HomePresenter {
         }
         final items = snap.data ?? const <Tournament>[];
         if (items.isEmpty) {
-          return Center(child: Text('no_tournament'.tr())); // ajoute la clé si besoin
+          return Center(child: Text('no_tournament'.tr())); // ajoute la cl? si besoin
         }
 
         return ListView.separated(
@@ -48,10 +48,10 @@ class HomePresenter {
           separatorBuilder: (_, __) => const Divider(height: 1),
           itemBuilder: (context, i) {
             final t = items[i];
-            final dateStr = t.tournamentDate.start; // compatible avec ton modèle
+            final dateStr = t.tournamentDate.start; // compatible avec ton mod?le
             return ListTile(
               title: Text(t.name),
-              subtitle: Text('${t.location} • $dateStr'),
+              subtitle: Text('${t.location} ? $dateStr'),
               onTap: () {
 				Navigator.of(context).push(
 					MaterialPageRoute(

@@ -43,7 +43,7 @@ Future<void> main() async {
         // ⇣⇣⇣ Laisse tes autres providers EXACTEMENT comme tu les avais ⇣⇣⇣
         ChangeNotifierProvider(create: (_) => LoginViewModel()),
         ChangeNotifierProvider(create: (_) => HomeViewModel()),
-        ChangeNotifierProvider(create: (_) => TournamentViewmodel()),
+        ChangeNotifierProvider(create: (ctx) => TournamentViewmodel()),
         ChangeNotifierProvider(create: (_) => DetailTournamentViewModel()),
 
          // a) CreateTournament a besoin du repo → lire via ctx

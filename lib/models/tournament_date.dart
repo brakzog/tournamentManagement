@@ -11,7 +11,7 @@ class TournamentDate {
   }
 
   Map<String, dynamic> toJson() => {
-    // On écrit avec les mêmes clés que ton code historique
+    // On ï¿½crit avec les mï¿½mes clï¿½s que ton code historique
     'beginingDate': start,
     if (end != null && end!.isNotEmpty) 'endDate': end,
   };

@@ -9,7 +9,7 @@ class TournamentRepository {
 
   TournamentRepository({FirebaseDatabase? database})
       : _db = database ?? FirebaseDatabase.instance {
-    // Cache offline (ignoré sur web) + keepSynced
+    // Cache offline (ignor? sur web) + keepSynced
     try {
       _db.setPersistenceEnabled(true);
       _db.ref('tournois').keepSynced(true);
@@ -116,7 +116,7 @@ class TournamentRepository {
     await _mRef(tournamentId).child(matchKey).remove();
   }
   
-  // --- Lecture brute de /tournois pour réutiliser ta logique existante ---
+  // --- Lecture brute de /tournois pour r?utiliser ta logique existante ---
 Future<Map<Object?, Object?>> fetchAllTournamentsRaw() async {
   final snap = await _tRef.get();
   if (!snap.exists || snap.value == null) return <Object, Object>{};
@@ -125,7 +125,7 @@ Future<Map<Object?, Object?>> fetchAllTournamentsRaw() async {
   return <Object, Object>{};
 }
 
-// Stream d'un tournoi unique par clé Firebase
+// Stream d'un tournoi unique par cl? Firebase
 Stream<Tournament?> watchTournamentByKey(String id) {
   return _tRef.child(id).onValue.map((event) {
     if (!event.snapshot.exists || event.snapshot.value == null) return null;
@@ -145,14 +145,14 @@ Stream<Tournament?> watchTournamentByKey(String id) {
         return v.map((e) => e.toString()).toList();
       }
       if (v is Map) {
-        // Firebase peut trouer une liste -> Map indexée {"0": "..."}
+        // Firebase peut trouer une liste -> Map index?e {"0": "..."}
         return (v as Map).values.map((e) => e.toString()).toList();
       }
       return <String>[];
     });
   }
 
-  /// Ajout (dé-doublonné) d'un participant
+  /// Ajout (d?-doublonn?) d'un participant
   Future<void> addParticipantToTournament(String tournamentId, String name) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return;

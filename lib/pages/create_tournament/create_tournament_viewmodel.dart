@@ -12,7 +12,7 @@ class CreateTournamentViewModel extends ChangeNotifier {
 
   CreateTournamentViewModel(this._repo);
 
-  // ----- Tes champs existants (inchangés) -----
+  // ----- Tes champs existants (inchangï¿½s) -----
   final TextEditingController tournamentNameController = TextEditingController();
   final TextEditingController locationController = TextEditingController();
   final TextEditingController eventTypeController = TextEditingController();
@@ -20,7 +20,7 @@ class CreateTournamentViewModel extends ChangeNotifier {
   String endTournamentDate = "";
   final List<String> guestList = [];
 
-  // ----- État pour l’UI -----
+  // ----- ï¿½tat pour lï¿½UI -----
   bool _loading = false;
   String? _error;
   String? _newKey;
@@ -29,7 +29,7 @@ class CreateTournamentViewModel extends ChangeNotifier {
   String? get error => _error;
   String? get newKey => _newKey;
 
-  // ----- Helpers invités (compat + dédoublonnage) -----
+  // ----- Helpers invitï¿½s (compat + dï¿½doublonnage) -----
   void addGuest(String guest) {
     final parts = guest.split(";")
         .map((g) => g.trim())
@@ -69,7 +69,7 @@ class CreateTournamentViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ----- Construction du modèle à partir des champs -----
+  // ----- Construction du modï¿½le ï¿½ partir des champs -----
   Tournament _buildTournament({required String createdBy}) {
     final emptyMatch = MatchTournament(
       player1: '',
@@ -97,10 +97,10 @@ class CreateTournamentViewModel extends ChangeNotifier {
         quarterFinalList: <MatchTournament>[],
       ),
     );
-    // ?? Ton modèle Tournament ne transporte pas l'id Firebase : on utilise la clé retournée par le repo.
+    // ?? Ton modï¿½le Tournament ne transporte pas l'id Firebase : on utilise la clï¿½ retournï¿½e par le repo.
   }
 
-  // ----- Action principale : création dans Firebase -----
+  // ----- Action principale : crï¿½ation dans Firebase -----
   Future<String?> createTournament({required String createdBy}) async {
     // mini validation
     final name = tournamentNameController.text.trim();
@@ -110,7 +110,7 @@ class CreateTournamentViewModel extends ChangeNotifier {
       return null;
     }
     if (tournamentDate.isEmpty) {
-      _error = "La date de début est obligatoire.";
+      _error = "La date de dï¿½but est obligatoire.";
       notifyListeners();
       return null;
     }
