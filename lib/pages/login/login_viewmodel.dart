@@ -20,7 +20,17 @@ class LoginViewModel extends ChangeNotifier {
   bool get isSuccess => _isSuccess;
   GoogleSignInAccount? get user => _user;
 
+
   // ===== GOOGLE =====
+
+  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
+  bool _googleInitialized = false;
+
+  Future<void> _ensureGoogleSignInInitialized() async {
+    if (_googleInitialized) return;
+    await _googleSignIn.initialize();
+    _googleInitialized = true;
+  }
   Future<void> connectWithGoogle() async {
     _isLoading = true;
     _errorMessage = null;
@@ -28,25 +38,58 @@ class LoginViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn.instance.authenticate();
-      if (googleUser == null) {
-        _isSuccess = false; // user cancelled
-        return;
-      }
-      _user = googleUser;
+      // 1) S'assurer que GoogleSignIn est initialisé (nouvelle API)
+      await _ensureGoogleSignInInitialized();
+
+      // 2) Lancer le flux d'authentification explicite
+      //    (équivalent du bouton "SIGN IN" de l'exemple)
+      final GoogleSignInAccount account = await _googleSignIn.authenticate(
+        scopeHint: const ['email'], // optionnel mais courant
+      );
+
+      _user = account;
 
       await const FlutterSecureStorage()
-          .write(key: "googleUserId", value: googleUser.id);
+          .write(key: "googleUserId", value: account.id);
 
-      final googleAuth = await googleUser.authentication;
+      // 4) Récupérer les tokens (API v7)
+      //    `authentication` est maintenant synchro, pas besoin de `await`.
+      final googleAuth = account.authentication;
+      final String? idToken = googleAuth.idToken;
 
+      if (idToken == null) {
+        throw Exception("Google n'a pas fourni de idToken.");
+      }
+
+      // 5) Créer le credential Firebase et se logger
       final credential = GoogleAuthProvider.credential(
-        idToken: googleAuth.idToken,
+        idToken: idToken,
+        // accessToken : optionnel avec les versions récentes, Firebase a surtout besoin du idToken.
       );
 
       await FirebaseAuth.instance.signInWithCredential(credential);
 
-      _isSuccess = true; // Root basculera automatiquement
+      _isSuccess = true; // ton Root pourra basculer comme avant
+    } on GoogleSignInException catch (e, st) {
+      // En v7, l’annulation renvoie une exception avec code "canceled"
+      final codeString = e.code.toString(); // type interne, on passe par toString
+      final isCanceled = codeString.contains('canceled');
+
+      if (isCanceled) {
+        _isSuccess = false;
+        _errorMessage = null;
+        if (kDebugMode) {
+          print("Google sign-in canceled: $e");
+          print(st);
+        }
+      } else {
+        _isSuccess = false;
+        _errorMessage = "Erreur d'authentification Google : ${e.code} - ${e.description}";
+        if (kDebugMode) {
+          print(_errorMessage);
+          print(st);
+        }
+      }
     } catch (e, st) {
       _isSuccess = false;
       _errorMessage = "Erreur d'authentification Google : $e";
@@ -60,7 +103,8 @@ class LoginViewModel extends ChangeNotifier {
     }
   }
 
-   // ===== APPLE =====
+
+  // ===== APPLE =====
   String _generateNonce([int length = 32]) {
     const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
     final rand = Random.secure();
