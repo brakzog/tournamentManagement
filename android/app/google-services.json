@@ -23,14 +23,6 @@
           }
         },
         {
-          "client_id": "77372019755-f3r9acdjqsc9t0igqlest4vu56gulgdj.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.jro.tournament_management",
-            "certificate_hash": "a81f91d8071c9f932b59b8179dc1607a2b6990bf"
-          }
-        },
-        {
           "client_id": "77372019755-rgeuvcjldnna1321tjb25krbl3onuamq.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

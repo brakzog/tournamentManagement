@@ -10,34 +10,132 @@ import 'package:tournament_management/models/poule.dart';
 import 'package:tournament_management/models/tournament.dart';
 import 'package:tournament_management/models/tournament_date.dart';
 import 'package:tournament_management/pages/detail_tournament/detail_tournament.dart';
-import 'package:tournament_management/data/repositories/tournament_repository.dart';
 
+/// --- MVI STATE --- ///
+class TournamentState {
+  final bool isLoading;
+  final String? errorMessage;
+  final List<Tournament> inProgress;
+  final List<Tournament> past;
+  final List<Tournament> cancel;
+
+  const TournamentState({
+    this.isLoading = false,
+    this.errorMessage,
+    this.inProgress = const [],
+    this.past = const [],
+    this.cancel = const [],
+  });
+
+  TournamentState copyWith({
+    bool? isLoading,
+    String? errorMessage,
+    List<Tournament>? inProgress,
+    List<Tournament>? past,
+    List<Tournament>? cancel,
+  }) {
+    return TournamentState(
+      isLoading: isLoading ?? this.isLoading,
+      errorMessage: errorMessage ?? this.errorMessage,
+      inProgress: inProgress ?? this.inProgress,
+      past: past ?? this.past,
+      cancel: cancel ?? this.cancel,
+    );
+  }
+}
+
+/// --- MVI INTENTS --- ///
+abstract class TournamentIntent {
+  const TournamentIntent();
+}
+
+class LoadTournamentsIntent extends TournamentIntent {
+  const LoadTournamentsIntent();
+}
+
+class RefreshTournamentsIntent extends TournamentIntent {
+  const RefreshTournamentsIntent();
+}
+
+/// --- VIEWMODEL --- ///
 class TournamentViewmodel with ChangeNotifier {
+  TournamentState _state = const TournamentState();
+  TournamentState get state => _state;
+
+  // On garde les listes d'origine (utile si d'autres écrans les utilisent plus tard)
   List<Tournament> inProgressTournament = [];
   List<Tournament> pastTournaments = [];
   List<Tournament> cancelNotPlayedTournaments = [];
   List<Tournament> tournaments = [];
-  final TournamentRepository _repo = TournamentRepository();
 
-  final Map<Tournament, String> _firebaseKeys = {};
+  void _setState(TournamentState newState) {
+    _state = newState;
+    notifyListeners();
+  }
 
-  String? firebaseKeyOf(Tournament t) => _firebaseKeys[t];
+  Future<void> onIntent(TournamentIntent intent) async {
+    if (intent is LoadTournamentsIntent || intent is RefreshTournamentsIntent) {
+      await _loadTournaments();
+    }
+  }
 
+  Future<void> _loadTournaments() async {
+    _setState(
+      _state.copyWith(
+        isLoading: true,
+        errorMessage: null,
+      ),
+    );
 
-  void navigateToDetailPage(BuildContext context, Tournament tournament, bool inProgress) {
-    final fbKey = firebaseKeyOf(tournament); // peut être null si non mappé (ok)
+    // Réinitialise les listes locales
+    inProgressTournament = [];
+    pastTournaments = [];
+    cancelNotPlayedTournaments = [];
+    tournaments = [];
+
+    try {
+      await fetchTournamentsFromFirebase();
+
+      _setState(
+        _state.copyWith(
+          isLoading: false,
+          errorMessage: null,
+          inProgress: List.unmodifiable(inProgressTournament),
+          past: List.unmodifiable(pastTournaments),
+          cancel: List.unmodifiable(cancelNotPlayedTournaments),
+        ),
+      );
+    } catch (e, st) {
+      if (kDebugMode) {
+        print('Erreur lors du chargement des tournois : $e');
+        print(st);
+      }
+      _setState(
+        _state.copyWith(
+          isLoading: false,
+          errorMessage: 'Erreur lors du chargement des tournois : $e',
+          inProgress: const [],
+          past: const [],
+          cancel: const [],
+        ),
+      );
+    }
+  }
+
+  void navigateToDetailPage(
+      BuildContext context, Tournament tournament, bool inProgress) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => DetailTournament(
           tournament: tournament,
           inProgress: inProgress,
-          tournamentKey: fbKey, // 🔹 on passe la clé
         ),
       ),
     );
   }
 
+  /// --- LOGIQUE EXISTANTE DE RÉCUPERATION FIREBASE --- ///
 
   Future<Map<String, List<Tournament>>> fetchTournamentsFromFirebase() async {
     Map<String, List<Tournament>> mapReturn = HashMap();
@@ -45,88 +143,62 @@ class TournamentViewmodel with ChangeNotifier {
     List<Tournament> past = [];
     List<Tournament> cancel = [];
 
-    // ⬇️ On lit via le Repository (plus de FirebaseDatabase direct ici)
-    final raw = await _repo.fetchAllTournamentsRaw();
-    if (raw.isEmpty) {
-      if (kDebugMode) print('No data available.');
+    final ref = FirebaseDatabase.instance.ref();
+    final snapshot = await ref.child('tournois').get();
+    if (snapshot.exists) {
+      return buildMapTournament(
+          snapshot, inProgress /*, future*/, past, cancel, mapReturn);
+    } else {
+      if (kDebugMode) {
+        print('No data available.');
+      }
       return {"": List.empty()};
     }
-
-    return buildMapTournamentFromMap(raw, inProgress, past, cancel, mapReturn);
   }
 
-
-
-  Map<String, List<Tournament>> buildMapTournamentFromMap(
-      Map<Object?, Object?> map,
+  Map<String, List<Tournament>> buildMapTournament(
+      DataSnapshot snapshot,
       List<Tournament> inProgress,
+      //  List<Tournament> future,
       List<Tournament> past,
       List<Tournament> cancel,
-      Map<String, List<Tournament>> mapReturn,
-      ) {
+      Map<String, List<Tournament>> mapReturn) {
+    Object? objectValue = snapshot.value as Map<Object?, Object?>;
+    Map<Object?, Object?> map = objectValue as Map<Object?, Object?>;
     map.forEach((key, value) {
-      if (value is! Map) return;
-      final Map<Object?, Object?> mapValue = value;
+      Map<Object?, Object?> mapValue = value as Map<Object?, Object?>;
 
-      // participants: tolérant (List ou Map indexée)
-      final participantsRaw = mapValue["participants"];
-      final List<String> participantsList = () {
-        if (participantsRaw is List) {
-          return participantsRaw.map((e) => e.toString()).toList();
-        } else if (participantsRaw is Map) {
-          return participantsRaw.values.map((e) => e.toString()).toList();
-        }
-        return <String>[];
-      }();
+      final List<Object?> participantsList =
+      mapValue["participants"] as List<Object?>;
 
       final List<Poule> pouleList = getPouleList(mapValue);
       final EndTournament finalMatchList = getListFinalMatch(mapValue);
-      final TournamentDate tournamentDate = getTournamentDate(mapValue);
 
-      // ⚠️ Nouveau : si la DB contient un champ "name", on l’utilise.
-      // Sinon, on garde ton ancien comportement: le nom = clé Firebase.
-      final String tournamentName = (mapValue["name"]?.toString() ?? key.toString());
+      TournamentDate tournamentDate = getTournamentDate(mapValue);
 
-      final Tournament tournament = Tournament(
+      Tournament tournament = Tournament(
         createdBy: "${mapValue["createdBy"]}",
-        name: tournamentName,
+        name: "$key",
         sportEvent: "${mapValue["sportEvent"]}",
+        participants: List<String>.from(participantsList),
         tournamentDate: tournamentDate,
-        participants: participantsList,
         pouleList: pouleList,
         finalMatchList: finalMatchList,
         location: "${mapValue['location']}",
       );
 
-      _firebaseKeys[tournament] = key.toString();
-
-      // Filtre : tournois de l’utilisateur courant
       if (tournament.createdBy == FirebaseAuth.instance.currentUser?.email) {
         retrieveCurrentUserData(tournament, inProgress, past, cancel);
       } else {
         if (kDebugMode) {
-          print("not from connected user : ${FirebaseAuth.instance.currentUser?.email} != ${tournament.createdBy}");
+          print(
+              "not from connected user : ${FirebaseAuth.instance.currentUser?.email} != ${tournament.createdBy}");
         }
       }
     });
-
-    // En cours : par date de début croissante
-    inProgress.sort((a, b) =>
-        _safeDate(a.tournamentDate.start).compareTo(_safeDate(b.tournamentDate.start)));
-
-    // Passés : par date de fin (ou début) décroissante
-    past.sort((a, b) =>
-        _safeDate(b.tournamentDate.end ?? b.tournamentDate.start, fallbackMax: true)
-            .compareTo(_safeDate(a.tournamentDate.end ?? a.tournamentDate.start, fallbackMax: true)));
-
-    // Annulés / non joués : par date de début croissante (si connue)
-    cancel.sort((a, b) =>
-        _safeDate(a.tournamentDate.start).compareTo(_safeDate(b.tournamentDate.start)));
-
     this.inProgressTournament = inProgress;
     this.pastTournaments = past;
     this.cancelNotPlayedTournaments = cancel;
-
     mapReturn["past"] = past;
     mapReturn["present"] = inProgress;
     mapReturn["cancel"] = cancel;
@@ -137,30 +209,32 @@ class TournamentViewmodel with ChangeNotifier {
       Tournament tournament,
       List<Tournament> inProgress,
       List<Tournament> past,
-      List<Tournament> cancel,
-      ) {
-    // start est un String dans ton modèle → on teste le contenu
-    final String start = tournament.tournamentDate.start;
-    final bool hasStart = start.trim().isNotEmpty;
-
-    // “tournoi terminé” = finale renseignée ET score présent
-    final fm = tournament.finalMatchList.finalMatch;
-    final bool finalsCompleted =
-        fm.player1.trim().isNotEmpty &&
-            fm.player2.trim().isNotEmpty &&
-            fm.score.trim().isNotEmpty;
-
-    if (finalsCompleted) {
-      past.add(tournament);
-      return;
+      List<Tournament> cancel) {
+    bool isChecked = false;
+    //Recuperation de l'ensemble des tournois présents ou passés ou n'ayant pas pu avoir lieu
+    tournaments.add(tournament);
+    //Récupération de l'ensemble des tournois en cours
+    if (tournament.tournamentDate.start != null &&
+        tournament.pouleList.isEmpty ||
+        tournament.finalMatchList.finalMatch.score.isEmpty) {
+      isChecked = addInProgressTournament(tournament, isChecked, inProgress);
     }
-    if (hasStart) {
-      // Tournoi démarré (ou planifié avec date) mais pas terminé
-      inProgress.add(tournament);
-      return;
+
+    //Récupération de l'ensemble des tournois déjà joués
+    if (!isChecked &&
+        tournament.finalMatchList.finalMatch.player1 != "" &&
+        tournament.finalMatchList.finalMatch.player2 != "" &&
+        tournament.finalMatchList.finalMatch.score != "") {
+      isChecked = addPastTournament(tournament, isChecked, past);
     }
-    // Pas de date → on le met dans “annulés / non joués”
-    cancel.add(tournament);
+    //Récupération de l'ensemble des tournois annulés ou pas joués
+    if (!isChecked && tournament.tournamentDate.start == null) {
+      cancel.add(tournament);
+    }
+    if (!isChecked) {
+      //should not happen from this point
+      if (kDebugMode) print("tournament not taken : $tournament");
+    }
   }
 
   bool addPastTournament(
@@ -180,18 +254,16 @@ class TournamentViewmodel with ChangeNotifier {
   }
 
   TournamentDate getTournamentDate(Map<Object?, Object?> mapValue) {
-    final raw = mapValue["tournamentDate"];
+    final dateMap = mapValue["tournamentDate"] as Map<Object?, Object?>;
 
-    if (raw is Map<Object?, Object?>) {
-      final begin = (raw["beginingDate"] ?? raw["start"] ?? "").toString();
-      final endRaw = (raw["endDate"] ?? raw["end"] ?? "").toString();
-      final end = endRaw.trim().isEmpty ? null : endRaw;
-      return TournamentDate(start: begin, end: end);
-    }
+    TournamentDate tournamentDate = TournamentDate(
+      start: "${dateMap["beginingDate"]}",
+      end: "${dateMap["endDate"]}",
+    );
 
-    // Fallback si la structure n’est pas celle attendue
-    return const TournamentDate(start: "", end: null);
+    return tournamentDate;
   }
+
   List<Poule> getPouleList(Map<Object?, Object?> mapValue) {
     if (mapValue['pouleList'] == null) {
       return [];
@@ -207,35 +279,44 @@ class TournamentViewmodel with ChangeNotifier {
           matchList: getListMatch(valueMap['matchs'] as List<Object?>),
           playerList: getPlayerList(valueMap['players'] as List<Object?>)));
     });
-
     return pouleList;
   }
 
-  List<MatchTournament> getListMatch(List<Object?> objectList) {
-    List<MatchTournament> returnList = [];
-    for (var value in objectList) {
-      Map<Object?, Object?> subMap = value as Map<Object?, Object?>;
-      MatchTournament currentMatch = MatchTournament(
-        player1: "${subMap['player1']}",
-        player2: "${subMap['player2']}",
-        score: "${subMap['score']}",
-        date: "${subMap['date']}",
-        location: "${subMap['location']}",
-      );
-      returnList.add(currentMatch);
-    }
-    return returnList;
+  List<MatchTournament> getListMatch(List<Object?> valueMap) {
+    List<MatchTournament> list = [];
+
+    valueMap.forEach((currentElem) {
+      Map<Object?, Object?> map = currentElem as Map<Object?, Object?>;
+      var element = MatchTournament(
+          player1: "${map['player1']}",
+          player2: "${map['player2']}",
+          score: "${map['score']}",
+          date: "${map['date']}",
+          location: "${map['location']}");
+      list.add(element);
+    });
+
+    return list;
   }
 
-  List<String> getPlayerList(List<Object?> objectList) {
-    return objectList.cast<String>();
+  List<String> getPlayerList(List<Object?> valueMap) {
+    List<String> list = [];
+    valueMap.forEach((currentElem) {
+      list.add("$currentElem");
+    });
+    return list;
   }
 
   EndTournament getListFinalMatch(Map<Object?, Object?> mapValue) {
-    //Map<Object?, Object?> finalMap = mapValue['final'] as Map<Object?, Object?>;
-    List<MatchTournament> quarterList = getMatchListMap('quartFinal', mapValue);
-    List<MatchTournament> semiList = getMatchListMap('semiFinal', mapValue);
-    MatchTournament smallFinall = getFinalMatch('smallFinal', mapValue);
+    //now need to retrieve quarterfinalist
+    List<MatchTournament> semiList =
+    getMatchListMap('semiFinal', mapValue);
+    List<MatchTournament> quarterList =
+    getMatchListMap('quartFinal', mapValue);
+    //final and small final
+    MatchTournament smallFinall =
+    getFinalMatch('smallFinalMatch', mapValue);
+
     MatchTournament finale = getFinalMatch('finalMatch', mapValue);
     return EndTournament(
         finalMatch: finale,
@@ -244,34 +325,7 @@ class TournamentViewmodel with ChangeNotifier {
         quarterFinalList: quarterList);
   }
 
-
   List<MatchTournament> getMatchListMap(
-      String key, Map<Object?, Object?> mapValue) {
-    if (mapValue[key] == null) {
-      return [];
-    }
-
-    List<Object?> objectMap = mapValue[key] as List<Object?>;
-    // List<Object?> objectList = objectMap.values as List<Object?>;
-    List<MatchTournament> matchList = [];
-    objectMap.forEach((element) {
-      Map<Object?, Object?> valueMap = element as Map<Object?, Object?>;
-      MatchTournament? currentMatch = MatchTournament(
-        player1: "${valueMap['player1']}",
-        player2: "${valueMap['player2']}",
-        score: "${valueMap['score']}",
-        date: "${valueMap['date']}",
-        location: "${valueMap['location']}",
-      );
-      matchList.add(currentMatch);
-    }
-    );
-    return matchList;
-  }
-
-
-
-  List<MatchTournament> getMatchList(
       String key, Map<Object?, Object?> mapValue) {
     if (mapValue[key] == null) {
       return [];
@@ -281,8 +335,8 @@ class TournamentViewmodel with ChangeNotifier {
     // List<Object?> objectList = objectMap.values as List<Object?>;
     List<MatchTournament> matchList = [];
     objectList.forEach((currentElem) {
-
-      Map<Object?, Object?> valueMap = currentElem as Map<Object?, Object?>;
+      Map<Object?, Object?> valueMap =
+      currentElem as Map<Object?, Object?>;
       MatchTournament? currentMatch = MatchTournament(
         player1: "${valueMap['player1']}",
         player2: "${valueMap['player2']}",
@@ -291,16 +345,21 @@ class TournamentViewmodel with ChangeNotifier {
         location: "${valueMap['location']}",
       );
       matchList.add(currentMatch);
-
     });
     return matchList;
   }
 
   MatchTournament getFinalMatch(String key, Map<Object?, Object?> mapValue) {
     if (mapValue[key] == null) {
-      return MatchTournament(player1: "", player2: "", score: "", date: "", location: "");
+      return MatchTournament(
+          player1: "",
+          player2: "",
+          score: "",
+          date: "",
+          location: "");
     }
-    Map<Object?, Object?> objectMap = mapValue[key] as Map<Object?, Object?>;
+    Map<Object?, Object?> objectMap =
+    mapValue[key] as Map<Object?, Object?>;
     return MatchTournament(
       player1: "${objectMap['player1']}",
       player2: "${objectMap['player2']}",
@@ -309,31 +368,4 @@ class TournamentViewmodel with ChangeNotifier {
       location: "${objectMap['location']}",
     );
   }
-
-  DateTime? _parseDateNullable(String s) {
-    final raw = (s).trim();
-    if (raw.isEmpty) return null;
-
-    // ISO (yyyy-MM-dd[THH:mm...])
-    try { return DateTime.parse(raw.split(' ').first); } catch (_) {}
-
-    // dd/MM/yyyy
-    try {
-      final p = raw.split(RegExp(r'[/\-.]'));
-      if (p.length >= 3) {
-        final d = int.parse(p[0]), m = int.parse(p[1]), y = int.parse(p[2]);
-        return DateTime(y, m, d);
-      }
-    } catch (_) {}
-
-    return null;
-  }
-
-  DateTime _safeDate(String s, {bool fallbackMax = false}) {
-    final dt = _parseDateNullable(s);
-    if (dt != null) return dt;
-    // Si on veut trier “passés” en récent d’abord, on peut inverser le fallback
-    return fallbackMax ? DateTime(9999) : DateTime.fromMillisecondsSinceEpoch(0);
-  }
-
 }

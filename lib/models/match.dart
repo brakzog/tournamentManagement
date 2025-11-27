@@ -1,5 +1,4 @@
 class MatchTournament {
-  // ⚠️ Reste volontairement mutable (ton code met à jour .score in-place)
   String player1; // peut être un nom d'équipe
   String player2;
   String score;    // format conseillé : "6-4;3-6;7-5"

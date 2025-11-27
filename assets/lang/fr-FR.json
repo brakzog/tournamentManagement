@@ -5,6 +5,7 @@
 
   "tournament_management": "Gestion des tournois",
   "my_tournaments": "Mes tournois",
+  "my_participations": "Mes participations",
   "create_tournament": "Créer un tournoi",
   "participation": "Participations",
 
@@ -44,6 +45,7 @@
   "tournament_name": "Nom du tournoi",
   "tournament_type": "Type de tournoi",
   "add_guest": "Ajouter des participants",
+  "guest_input_hint": "nom du participant",
   "tournament_date_definition": "Dates de début et fin du tournoi",
   "tournament_begin_date": "Dates du tournoi",
   "tournament_location": "Lieu du tournoi",
@@ -63,15 +65,5 @@
   "attention": "Attention",
   "all_match_poule_played": "Tous les matchs de poule ont été joués, passage à la pahse finale",
   "loading": "Chargement en cours...",
-  "auth_error": "Erreur d'authentification",
-  "see_all": "Voir tout",
-  
-  
-  "participants": "Participants",
-  "no_participant": "Aucun participant {0}",
-  "confirm": "Confirmer",
-  "remove_participant_q": "Retirer {0} de ce tournoi ?",
-  "remove": "Supprimer",
-  "enter_name": "Nom / email du participant",
-  "my_results": "Mes résultats"
+  "auth_error": "Erreur d'authentification"
 }

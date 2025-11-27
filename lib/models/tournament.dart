@@ -1,8 +1,7 @@
+import 'package:tournament_management/models/end_tournament.dart';
 import 'package:tournament_management/models/poule.dart';
 import 'package:tournament_management/models/tournament_date.dart';
 import 'package:tournament_management/models/match.dart';
-
-import 'end_tournament.dart';
 
 
 class Tournament {

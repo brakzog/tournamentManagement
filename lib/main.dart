@@ -8,7 +8,6 @@ import 'package:provider/provider.dart';
 // == Tes imports d'app ==
 import 'package:tournament_management/pages/home/home.dart';
 import 'package:tournament_management/pages/login/login.dart';
-import 'package:tournament_management/data/repositories/tournament_repository.dart';
 
 // ViewModels (adapte les chemins si besoin)
 import 'package:tournament_management/pages/home/home_viewmodel.dart';
@@ -31,40 +30,22 @@ Future<void> main() async {
   );
 
   runApp(
-  EasyLocalization(
-    supportedLocales: const [Locale('fr', 'FR')],
-    path: 'assets/lang',
-    fallbackLocale: const Locale('fr', 'FR'),
-    child: MultiProvider(
-      providers: [
-        // Repo disponible pour CreateTournament
-        Provider<TournamentRepository>(create: (_) => TournamentRepository()),
-
-        // ⇣⇣⇣ Laisse tes autres providers EXACTEMENT comme tu les avais ⇣⇣⇣
-        ChangeNotifierProvider(create: (_) => LoginViewModel()),
-        ChangeNotifierProvider(create: (_) => HomeViewModel()),
-        ChangeNotifierProvider(create: (ctx) => TournamentViewmodel()),
-        ChangeNotifierProvider(create: (_) => DetailTournamentViewModel()),
-
-         // a) CreateTournament a besoin du repo → lire via ctx
-        ChangeNotifierProvider(
-          create: (ctx) => CreateTournamentViewModel(
-            ctx.read<TournamentRepository>(),
-          ),
-        ),
-
-        // b) ParticipationViewModel idem (corrige la ligne cassée)
-        ChangeNotifierProvider(
-          create: (ctx) => ParticipationViewModel(
-            ctx.read<TournamentRepository>(),
-          ),
-        ),
-      ],
-      child: const MyApp(),
+    EasyLocalization(
+	  supportedLocales: [Locale('fr', 'FR')],
+      path: 'assets/lang', 
+      fallbackLocale: const Locale('fr', 'FR'),
+      child: MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => LoginViewModel()),
+		      ChangeNotifierProvider(create: (_) => HomeViewModel()),
+          ChangeNotifierProvider(create: (_) => TournamentViewmodel()),
+          ChangeNotifierProvider(create: (_) => CreateTournamentViewModel()),
+          ChangeNotifierProvider(create: (_) => ParticipationViewModel()),
+        ],
+        child: const MyApp(),
+      ),
     ),
-  ),
-);
-
+  );
 }
 
 class MyApp extends StatelessWidget {

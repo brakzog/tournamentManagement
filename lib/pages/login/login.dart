@@ -1,83 +1,86 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:sign_in_with_apple/sign_in_with_apple.dart';
-import 'package:tournament_management/pages/home/home.dart';
-
-import 'login_presenter.dart';
-import 'login_viewmodel.dart';
 import 'package:provider/provider.dart';
-import 'package:easy_localization/easy_localization.dart'; // Assurez-vous d'importer easy_localization
+import 'package:easy_localization/easy_localization.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+
+import 'login_viewmodel.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // On suppose que LoginViewModel est déjà fourni plus haut
+    // via MultiProvider dans main.dart.
     final viewModel = context.watch<LoginViewModel>();
-    final presenter = LoginPresenter(viewModel);
-
-    // ❌ IMPORTANT : plus AUCUNE navigation ici.
-    // On ne pousse pas Home sur succès : Root écoute authStateChanges() et fait la bascule.
+    final state = viewModel.state;
 
     return Scaffold(
-      appBar: AppBar(title: Text('login_title').tr()),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'connect_google',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 18),
-            ).tr(),
-            const SizedBox(height: 20),
-
-            // Bouton Google
-            if (viewModel.isLoading)
-              const Center(child: CircularProgressIndicator())
-            else
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+      appBar: AppBar(
+        title: Text('login_title'.tr()),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Erreur éventuelle
+                if (state.errorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16.0),
+                    child: Text(
+                      state.errorMessage!,
+                      style: const TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
-                  elevation: 4,
-                ),
-                onPressed: presenter.onGoogleSignInTapped,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('connect_google').tr(),
-                  ],
-                ),
-              ),
 
-            // Erreur éventuelle
-            if (viewModel.errorMessage != null) ...[
-              const SizedBox(height: 16),
-              Text(
-                viewModel.errorMessage!,
-                style: const TextStyle(color: Colors.red),
-                textAlign: TextAlign.center,
-              ),
-            ],
+                // Loader
+                if (state.isLoading) ...[
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text('loading'.tr()),
+                  const SizedBox(height: 24),
+                ],
 
-            const SizedBox(height: 10),
-
-            // Bouton Apple (iOS uniquement)
-            if (Platform.isIOS)
-              SizedBox(
-                height: 50,
-                child: SignInWithAppleButton(
-                  onPressed: presenter.onAppleSignInTapped,
-                  style: SignInWithAppleButtonStyle.black,
+                // Bouton Google
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: state.isLoading
+                        ? null
+                        : () => viewModel.onIntent(const LoginWithGoogleIntent()),
+                    child: Text('connect_google'.tr()),
+                  ),
                 ),
-              ),
-          ],
+
+                const SizedBox(height: 16),
+
+                // Bouton Apple (iOS uniquement)
+                if (Platform.isIOS)
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: SignInWithAppleButton(
+                      onPressed: state.isLoading
+                          ? null
+                          : () =>
+                          viewModel.onIntent(const LoginWithAppleIntent()),
+                      style: SignInWithAppleButtonStyle.black,
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );

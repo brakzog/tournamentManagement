@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:intl/intl.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
@@ -8,22 +9,98 @@ import 'package:tournament_management/models/poule.dart';
 import 'package:tournament_management/models/tournament.dart';
 import 'package:tournament_management/utils.dart';
 
-class DetailTournamentViewModel extends ChangeNotifier{
+class DetailTournamentState {
+  final int tabIndex;
+  final bool isLoading;
+  final String? errorMessage;
 
-  final Tournament? tournament;
+  const DetailTournamentState({
+    this.tabIndex = 0,
+    this.isLoading = false,
+    this.errorMessage,
+  });
 
-  DetailTournamentViewModel({this.tournament});
+  DetailTournamentState copyWith({
+    int? tabIndex,
+    bool? isLoading,
+    String? errorMessage,
+  }) {
+    return DetailTournamentState(
+      tabIndex: tabIndex ?? this.tabIndex,
+      isLoading: isLoading ?? this.isLoading,
+      errorMessage: errorMessage,
+    );
+  }
+}
+
+// --- INTENTS --- //
+
+abstract class DetailTournamentIntent {
+  const DetailTournamentIntent();
+}
+
+class ChangeTabIntent extends DetailTournamentIntent {
+  final int index;
+  const ChangeTabIntent(this.index);
+}
+
+class GeneratePoolsIntent extends DetailTournamentIntent {
+  const GeneratePoolsIntent();
+}
 
 
+class DetailTournamentViewModel extends ChangeNotifier {
+  final Tournament tournament;
+  final bool inProgress;
 
-  Future<void> generatePoolsAndUpdateTournament(Tournament tournament) async {
-    // Logique métier ici, telle que la génération des poules
-    List<Poule> poules = generatePools(tournament.participants);
+  DetailTournamentState _state = const DetailTournamentState();
+  DetailTournamentState get state => _state;
 
-    // Mise à jour du modèle ou de la base de données ici
-    tournament.pouleList.addAll(poules);
+  DetailTournamentViewModel({
+    required this.tournament,
+    required this.inProgress,
+  });
+
+  void _setState(DetailTournamentState newState) {
+    _state = newState;
+    notifyListeners();
   }
 
+  Future<void> onIntent(DetailTournamentIntent intent) async {
+    if (intent is ChangeTabIntent) {
+      _setState(_state.copyWith(tabIndex: intent.index));
+    } else if (intent is GeneratePoolsIntent) {
+      await _handleGeneratePools();
+    }
+    // plus tard : autres intents
+  }
+
+  Future<void> _handleGeneratePools() async {
+    _setState(_state.copyWith(isLoading: true, errorMessage: null));
+    try {
+      // Génère les poules à partir des participants du tournoi
+      await generatePoolsAndUpdateTournament();
+
+      _setState(_state.copyWith(isLoading: false));
+    } catch (e) {
+      _setState(
+        _state.copyWith(
+          isLoading: false,
+          errorMessage: "Erreur lors de la génération des poules : $e",
+        ),
+      );
+    }
+  }
+
+  Future<void> generatePoolsAndUpdateTournament() async {
+    // Génère les poules à partir des participants du tournoi
+    final List<Poule> poules = generatePools(tournament.participants);
+
+    // Met à jour le modèle en mémoire
+    tournament.pouleList
+      ..clear()
+      ..addAll(poules);
+  }
 
   List<Poule> generatePools(List<String> userList) {
     // Mélanger les utilisateurs
@@ -67,7 +144,7 @@ class DetailTournamentViewModel extends ChangeNotifier{
           player2: userList[j],
           score: '',
           date: '${calculateDate("poule")}',
-          location: tournament!.location,
+          location: tournament.location,
         );
         matches.add(match);
       }
@@ -76,9 +153,10 @@ class DetailTournamentViewModel extends ChangeNotifier{
   }
 
   String calculateDate(String phase) {
-    DateTime startDate = DateFormat("dd/MM/yyyy").parse(tournament!.tournamentDate.start!);
-    DateTime endDate = DateFormat("dd/MM/yyyy").parse(tournament!.tournamentDate.end!);
-
+    DateTime startDate =
+    DateFormat("dd/MM/yyyy").parse(tournament.tournamentDate.start!);
+    DateTime endDate =
+    DateFormat("dd/MM/yyyy").parse(tournament.tournamentDate.end!);
 
     int totalDays = endDate.difference(startDate).inDays;
     if (totalDays < 3) {
@@ -89,11 +167,13 @@ class DetailTournamentViewModel extends ChangeNotifier{
     int phaseGroupDays = (totalDays * 0.6).floor();
     int quarterFinalsDays = (totalDays * 0.2).floor();
     int semiFinalsDays = (totalDays * 0.15).floor();
-    int finalsDays = totalDays - (phaseGroupDays + quarterFinalsDays + semiFinalsDays);
+    int finalsDays =
+        totalDays - (phaseGroupDays + quarterFinalsDays + semiFinalsDays);
 
     DateTime startPoule = startDate;
     DateTime startQuarter = startPoule.add(Duration(days: phaseGroupDays));
-    DateTime startSemi = startQuarter.add(Duration(days: quarterFinalsDays));
+    DateTime startSemi =
+    startQuarter.add(Duration(days: quarterFinalsDays));
     DateTime startFinal = startSemi.add(Duration(days: semiFinalsDays));
 
     Map<String, String> phases = {
@@ -111,79 +191,140 @@ class DetailTournamentViewModel extends ChangeNotifier{
     return "${DateFormat('dd-MM-yyyy').format(startDate)} → ${DateFormat('dd-MM-yyyy').format(endDate)}";
   }
 
-
   void _savePoolsToFirebase(List<Poule> poules) {
     final tournamentRef = FirebaseDatabase.instance.ref().child("tournois");
-    DatabaseReference poulesRef = tournamentRef.child(tournament!.name).child('pouleList');
+    DatabaseReference poulesRef =
+    tournamentRef.child(tournament.name).child('pouleList');
 
     // Convertir chaque poule en données et les sauvegarder
     for (var poule in poules) {
       Map<String, dynamic> pouleData = poule.toJson();
-      pouleData.remove("name");  // Retirer le nom avant l'enregistrement
+      pouleData.remove("name"); // Retirer le nom avant l'enregistrement
       poulesRef.child(poule.name).set(pouleData);
     }
   }
 
-  Future<void> updateMatchGraph(DatabaseReference endTournamentRef, MatchTournament newMatch) async {
+  Future<void> updateMatchGraph(
+      DatabaseReference endTournamentRef, MatchTournament newMatch) async {
     final snapshot = await endTournamentRef.once();
 
     if (snapshot.snapshot.value != null) {
-      Map<dynamic, dynamic> matches = snapshot.snapshot.value as Map<dynamic, dynamic>;
-      matches["score"] = newMatch.score;
-      try { 
-        await endTournamentRef.update(newMatch.toJson());
-        print("Match $newMatch mis à jour");
-        updateNextStep(newMatch, endTournamentRef);
-      } catch (e) {
-                  print("Erreur lors de la mise à jour du match : $e");
-      }
+      Map<dynamic, dynamic> matches =
+      snapshot.snapshot.value as Map<dynamic, dynamic>;
+      matches.forEach((key, matchData) async {
+        // Vérifier si le match correspond à celui que l'on souhaite mettre à jour
+        if (matchData['player1'] == newMatch.player1 &&
+            matchData['player2'] == newMatch.player2) {
+          // Mettre à jour le score dans Firebase pour ce match
+          await endTournamentRef.child(key).update(newMatch.toJson());
+        }
+      });
     }
   }
 
-  Future<void> updateNextStep(MatchTournament match, DatabaseReference ref) async {
-    final winner = getWinner(match);
-    if(ref.parent?.key == "quartFinal") {
-      prepareSemiFinal(ref, match, winner);
-    } else if(ref.parent?.key == "semiFinal") {
-      prepareFinal(ref, match, winner);
-    } 
-  }
-
-  void prepareFinal(DatabaseReference ref, MatchTournament match, String winner) {
-    final tournamentRef = FirebaseDatabase.instance.ref().child("tournois").child(tournament!.name);
-    final index = tournament?.getIndex(tournament!.finalMatchList.semiFinalist, match);
-    int newIndex = index! < 1 ? 0 : 1;
-
-
-    if(newIndex == 0) {
-      tournament?.finalMatchList.finalMatch.player1 = winner;
-    } else {
-      tournament?.finalMatchList.finalMatch.player2 = winner;
-    }
-    tournamentRef.child("finalMatch").update(tournament!.finalMatchList.finalMatch.toJson());
-  }
-
-  void prepareSemiFinal(DatabaseReference ref, MatchTournament match, String winner) {
-    final tournamentRef = FirebaseDatabase.instance.ref().child("tournois").child(tournament!.name);
-    final index = tournament?.getIndex(tournament!.finalMatchList.quarterFinalList, match);
-    int newIndex = index! < 2 ? 0 : 1;
-      
-    if (tournament?.finalMatchList.semiFinalist[newIndex].player1.isEmpty == true) {
-      tournament?.finalMatchList.semiFinalist[newIndex].player1 = winner;
-      tournamentRef.child("semiFinal").child(newIndex.toString()).child("player1").update(tournament!.finalMatchList.semiFinalist[index].toJson());
-    } else {
-      tournament?.finalMatchList.semiFinalist[newIndex].player2 = winner;
-      tournamentRef.child("semiFinal").child(newIndex.toString()).child("player2").update(tournament!.finalMatchList.semiFinalist[index].toJson());
+  Future<void> updateSemiFinal(
+      DatabaseReference endTournamentRef, int index, int newIndex) async {
+    if (tournament.finalMatchList.semiFinalist.length > 1) {
+      await endTournamentRef
+          .child("semiFinal")
+          .child(newIndex.toString())
+          .update(
+          tournament.finalMatchList.semiFinalist[index].toJson());
     }
   }
-  
 
+  Future<void> updateQuarterFinal(
+      DatabaseReference endTournamentRef, int index, int newIndex) async {
+    if (tournament.finalMatchList.quarterFinalList.length > 1) {
+      await endTournamentRef
+          .child("quarterFinal")
+          .child(newIndex.toString())
+          .update(tournament.finalMatchList.quarterFinalList[index].toJson());
+    }
+  }
 
-  Future<void> updateMatch(DatabaseReference selectedPouleRef, MatchTournament newMatch) async {
+  Future<void> updateFinalMatch(
+      DatabaseReference endTournamentRef, MatchTournament newMatch) async {
+    await endTournamentRef.child("finalMatch").update(newMatch.toJson());
+  }
+
+  Future<void> updateSmallFinalMatch(
+      DatabaseReference endTournamentRef, MatchTournament newMatch) async {
+    await endTournamentRef.child("smallFinalMatch").update(newMatch.toJson());
+  }
+
+  Future<void> updateSemiFinalGraph(
+      DatabaseReference endTournamentRef, int index, int newIndex) async {
+    if (tournament.finalMatchList.semiFinalist.length > 1) {
+      await endTournamentRef
+          .child("semiFinal")
+          .child(newIndex.toString())
+          .update(
+          tournament.finalMatchList.semiFinalist[index].toJson());
+    }
+  }
+
+  Future<void> updateQuarterFinalGraph(
+      DatabaseReference endTournamentRef, int index, int newIndex) async {
+    if (tournament.finalMatchList.quarterFinalList.length > 1) {
+      await endTournamentRef
+          .child("quarterFinal")
+          .child(newIndex.toString())
+          .update(tournament.finalMatchList.quarterFinalList[index].toJson());
+    }
+  }
+
+  Future<void> updateSemiFinalPlayers(
+      DatabaseReference endTournamentRef, int index, int newIndex) async {
+    if (tournament.finalMatchList.semiFinalist.length > 1) {
+      await endTournamentRef
+          .child("semiFinal")
+          .child(newIndex.toString())
+          .child("player1")
+          .update(tournament.finalMatchList.semiFinalist[index].toJson());
+    }
+  }
+
+  Future<void> updateSmallFinalPlayers(
+      DatabaseReference endTournamentRef, int index, int newIndex) async {
+    if (tournament.finalMatchList.semiFinalist.length > 1) {
+      await endTournamentRef
+          .child("smallFinal")
+          .child(newIndex.toString())
+          .child("player2")
+          .update(tournament.finalMatchList.semiFinalist[index].toJson());
+    }
+  }
+
+  Future<void> updateSemiFinalPlayersGraph(
+      DatabaseReference endTournamentRef, int index, int newIndex) async {
+    if (tournament.finalMatchList.semiFinalist.length > 1) {
+      await endTournamentRef
+          .child("semiFinal")
+          .child(newIndex.toString())
+          .child("player1")
+          .update(tournament.finalMatchList.semiFinalist[index].toJson());
+    }
+  }
+
+  Future<void> updateSmallFinalPlayersGraph(
+      DatabaseReference endTournamentRef, int index, int newIndex) async {
+    if (tournament.finalMatchList.semiFinalist.length > 1) {
+      await endTournamentRef
+          .child("smallFinal")
+          .child(newIndex.toString())
+          .child("player2")
+          .update(tournament.finalMatchList.semiFinalist[index].toJson());
+    }
+  }
+
+  Future<void> updateMatch(
+      DatabaseReference selectedPouleRef, MatchTournament newMatch) async {
     final snapshot = await selectedPouleRef.once();
 
     if (snapshot.snapshot.value != null) {
-      Map<dynamic, dynamic> matches = snapshot.snapshot.value as Map<dynamic, dynamic>;
+      Map<dynamic, dynamic> matches =
+      snapshot.snapshot.value as Map<dynamic, dynamic>;
 
       matches.forEach((key, matchList) async {
         if (matchList is List<Object?>) {
@@ -191,12 +332,19 @@ class DetailTournamentViewModel extends ChangeNotifier{
             var element = matchList[i];
 
             if (element is Map<Object?, Object?>) {
-              if ((element['player1'] == newMatch.player1 && element['player2'] == newMatch.player2) ||
-                  (element['player2'] == newMatch.player1 && element['player1'] == newMatch.player2)) {
+              // Vérifier si les joueurs sont les mêmes, quel que soit l'ordre
+              if ((element['player1'] == newMatch.player1 &&
+                  element['player2'] == newMatch.player2) ||
+                  (element['player1'] == newMatch.player2 &&
+                      element['player2'] == newMatch.player1)) {
                 try {
-                  await selectedPouleRef.child("matchs").child("$i").update(newMatch.toJson());
+                  await selectedPouleRef
+                      .child("matchs")
+                      .child("$i")
+                      .update(newMatch.toJson());
                 } catch (e) {
-                  print("Erreur lors de la mise à jour du match $i : $e");
+                  print(
+                      "Erreur lors de la mise à jour du match $i : $e");
                 }
                 break;
               }
@@ -206,5 +354,4 @@ class DetailTournamentViewModel extends ChangeNotifier{
       });
     }
   }
-
 }
