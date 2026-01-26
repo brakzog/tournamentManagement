@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -12,26 +13,61 @@ import 'package:tournament_management/utils.dart';
 class DetailTournamentState {
   final int tabIndex;
   final bool isLoading;
+  final bool isOwner;
   final String? errorMessage;
+
+
+  final Tournament? tournament;
+  final String? currentUserId;
+  final bool isDeleting;
+  final bool deleteSuccess;
 
   const DetailTournamentState({
     this.tabIndex = 0,
     this.isLoading = false,
+    this.isOwner = false,
     this.errorMessage,
+    this.tournament,
+    this.currentUserId,
+    this.isDeleting = false,
+    this.deleteSuccess = false,
   });
 
   DetailTournamentState copyWith({
     int? tabIndex,
     bool? isLoading,
+    bool? isOwner,
     String? errorMessage,
+    Tournament? tournament,
+    String? currentUserId,
+    bool? isDeleting,
+    bool? deleteSuccess,
   }) {
     return DetailTournamentState(
       tabIndex: tabIndex ?? this.tabIndex,
       isLoading: isLoading ?? this.isLoading,
+      isOwner: isOwner ?? this.isOwner,
       errorMessage: errorMessage,
+      tournament: tournament ?? this.tournament,
+      currentUserId: currentUserId ?? this.currentUserId,
+      isDeleting: isDeleting ?? this.isDeleting,
+      deleteSuccess: deleteSuccess ?? this.deleteSuccess,
     );
   }
+
+
+  bool get canDeleteTournament {
+    final t = tournament;
+    final uid = currentUserId;
+    if (t == null || uid == null) return false;
+
+    // Adapte ces noms à ton vrai modèle
+    return t.createdBy == uid && t.finalMatchList.finalMatch != null;
+  }
 }
+
+
+
 
 // --- INTENTS --- //
 
@@ -48,6 +84,10 @@ class GeneratePoolsIntent extends DetailTournamentIntent {
   const GeneratePoolsIntent();
 }
 
+class DetailTournamentIntentDeleteRequested extends DetailTournamentIntent {
+  const DetailTournamentIntentDeleteRequested();
+}
+
 
 class DetailTournamentViewModel extends ChangeNotifier {
   final Tournament tournament;
@@ -61,6 +101,16 @@ class DetailTournamentViewModel extends ChangeNotifier {
     required this.inProgress,
   });
 
+
+  Future<void> init() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    _state = _state.copyWith(currentUserId: uid, isLoading: true);
+    notifyListeners();
+    _state = _state.copyWith(tournament: tournament, isLoading: false);
+    notifyListeners();
+  }
+
+
   void _setState(DetailTournamentState newState) {
     _state = newState;
     notifyListeners();
@@ -71,9 +121,42 @@ class DetailTournamentViewModel extends ChangeNotifier {
       _setState(_state.copyWith(tabIndex: intent.index));
     } else if (intent is GeneratePoolsIntent) {
       await _handleGeneratePools();
+    } else if (intent is DetailTournamentIntentDeleteRequested) {
+      _onDeleteTournament();
     }
     // plus tard : autres intents
   }
+
+  Future<void> _onDeleteTournament() async {
+    final t = _state.tournament;
+    if (t == null) return;
+
+    _state = _state.copyWith(isDeleting: true);
+    notifyListeners();
+
+    try {
+      await deleteTournament(t.name);
+
+      _state = _state.copyWith(
+        isDeleting: false,
+        deleteSuccess: true,
+      );
+      notifyListeners();
+    } catch (e) {
+      _state = _state.copyWith(isDeleting: false);
+      notifyListeners();
+    }
+  }
+
+
+  Future<void> deleteTournament(String tournamentName) async {
+    final tournamentRef = FirebaseDatabase.instance.ref().child("tournois");
+    DatabaseReference tournament =
+    tournamentRef.child(tournamentName);
+    tournament.remove();
+  }
+
+
 
   Future<void> _handleGeneratePools() async {
     _setState(_state.copyWith(isLoading: true, errorMessage: null));

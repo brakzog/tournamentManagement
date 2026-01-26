@@ -135,7 +135,6 @@ class TournamentViewmodel with ChangeNotifier {
     );
   }
 
-  /// --- LOGIQUE EXISTANTE DE RÉCUPERATION FIREBASE --- ///
 
   Future<Map<String, List<Tournament>>> fetchTournamentsFromFirebase() async {
     Map<String, List<Tournament>> mapReturn = HashMap();

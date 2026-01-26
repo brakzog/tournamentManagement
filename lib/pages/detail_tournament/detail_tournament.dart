@@ -1,4 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -51,6 +52,8 @@ class _DetailTournamentScreenState extends State<_DetailTournamentScreen>
   @override
   void initState() {
     super.initState();
+
+
     // 2 onglets : poules + arbre
     _tabController = TabController(length: 2, vsync: this);
 
@@ -71,6 +74,7 @@ class _DetailTournamentScreenState extends State<_DetailTournamentScreen>
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<DetailTournamentViewModel>();
+    vm.init();
     final state = vm.state;
 
     // State -> tabs
@@ -79,9 +83,25 @@ class _DetailTournamentScreenState extends State<_DetailTournamentScreen>
       _tabController.index = state.tabIndex;
     }
 
+    if (state.deleteSuccess) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.of(context).pop();
+      });
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("detail_tournament").tr(),
+        actions:[
+          if (_canShowDeleteButton(state))
+            IconButton(
+              icon: const Icon(Icons.delete),
+              onPressed: () {
+                vm.onIntent(const DetailTournamentIntentDeleteRequested());
+              },
+            )
+
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: [
@@ -124,6 +144,23 @@ class _DetailTournamentScreenState extends State<_DetailTournamentScreen>
           : null,
     );
   }
+}
+
+
+bool _canShowDeleteButton(DetailTournamentState state) {
+  final tournament = state.tournament; // adapte au nom exact dans ton state
+  if (tournament == null) return false;
+
+  // Récup de l'utilisateur courant (exemple avec FirebaseAuth)
+  final currentUserId = FirebaseAuth.instance.currentUser?.email;
+  if (currentUserId == null) return false;
+
+  final isCreator = tournament.createdBy == currentUserId;
+
+  // Condition 2 : le tournoi a une finale jouée
+  final finalMatchFinished = tournament.finalMatchList.finalMatch.score;
+
+  return isCreator && finalMatchFinished != null && finalMatchFinished != "";
 }
 
 // ======================================================================
