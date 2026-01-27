@@ -47,14 +47,23 @@ post_install do |installer|
     flutter_additional_ios_build_settings(target)
 
     target.build_configurations.each do |config|
-      # 1) Force iOS minimum pour TOUS les pods
+      # Force iOS min for ALL pod targets
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
 
-      # 2) Ton patch existant
       xcconfig_path = config.base_configuration_reference.real_path
       xcconfig = File.read(xcconfig_path)
       xcconfig_mod = xcconfig.gsub(/DT_TOOLCHAIN_DIR/, "TOOLCHAIN_DIR")
       File.open(xcconfig_path, "w") { |file| file << xcconfig_mod }
     end
   end
+
+  # Also force iOS min for the main Xcode project (Runner)
+  installer.aggregate_targets.each do |aggregate_target|
+    aggregate_target.user_project.targets.each do |t|
+      t.build_configurations.each do |config|
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+      end
+    end
+  end
 end
+
