@@ -297,17 +297,22 @@ class DetailTournamentViewModel extends ChangeNotifier {
     return "${DateFormat('dd-MM-yyyy').format(startDate)} → ${DateFormat('dd-MM-yyyy').format(endDate)}";
   }
 
-  void _savePoolsToFirebase(List<Poule> poules) {
-    final tournamentRef = FirebaseDatabase.instance.ref().child("tournois");
-    DatabaseReference poulesRef =
-    tournamentRef.child(tournament.id).child('pouleList');
+  Future<void> _savePoolsToFirebase(List<Poule> poules) async {
+    final tournamentRef = FirebaseDatabase.instance.ref('tournois');
+    final poulesRef = tournamentRef.child(tournament.id).child('pouleList');
 
-    // Convertir chaque poule en données et les sauvegarder
-    for (var poule in poules) {
-      Map<String, dynamic> pouleData = poule.toJson();
-      pouleData.remove("name"); // Retirer le nom avant l'enregistrement
-      poulesRef.child(poule.name).set(pouleData);
+    // Optionnel mais conseillé : repartir propre
+    await poulesRef.remove();
+
+    // Écriture en une fois (plus fiable que N set séparés)
+    final Map<String, dynamic> allPoulesData = {};
+    for (final poule in poules) {
+      final data = Map<String, dynamic>.from(poule.toJson());
+      data.remove('name');
+      allPoulesData[poule.name] = data;
     }
+
+    await poulesRef.set(allPoulesData);
   }
 
   Future<void> updateMatchGraph(
