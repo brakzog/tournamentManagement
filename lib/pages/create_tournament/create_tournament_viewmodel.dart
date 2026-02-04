@@ -187,9 +187,12 @@ class CreateTournamentViewModel extends ChangeNotifier {
     );
 
     try {
-      final dbRef = FirebaseDatabase.instance.ref().child('tournois');
+      final dbRef = FirebaseDatabase.instance.ref().child('tournois').push();
+      final id = dbRef.key!;
 
-      await dbRef.child(tournamentName).set({
+      await dbRef.set({
+        'id': id,
+        'name': tournamentName,
         'createdBy': createdBy,
         'sportEvent': eventType,
         'location': location,

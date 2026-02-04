@@ -142,7 +142,7 @@ class DetailTournamentViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await deleteTournament(t.name);
+      await deleteTournament(t.id);
 
       _state = _state.copyWith(
         isDeleting: false,
@@ -164,26 +164,17 @@ class DetailTournamentViewModel extends ChangeNotifier {
   }
 
   Future<void> _handleDeleteConfirmed() async {
-    if (_state.isLoading) return;
+    final t = _state.tournament;
+    if (t == null) return;
+    if (_state.isDeleting) return;
 
-    _setState(_state.copyWith(isLoading: true, errorMessage: null));
+    _setState(_state.copyWith(isDeleting: true, errorMessage: null));
 
     try {
-      final tournamentId = _state.tournamentId; // adapte selon ton state
-      await FirebaseFirestore.instance
-          .collection('tournaments') // adapte le nom
-          .doc(tournamentId)
-          .delete();
-
-      _setState(_state.copyWith(
-        isLoading: false,
-        deleteSuccess: true,
-      ));
+      await FirebaseDatabase.instance.ref('tournois/${t.id}').remove();
+      _setState(_state.copyWith(isDeleting: false, deleteSuccess: true));
     } catch (e) {
-      _setState(_state.copyWith(
-        isLoading: false,
-        errorMessage: "Erreur suppression : $e",
-      ));
+      _setState(_state.copyWith(isDeleting: false, errorMessage: "Erreur suppression : $e"));
     }
   }
 
@@ -309,7 +300,7 @@ class DetailTournamentViewModel extends ChangeNotifier {
   void _savePoolsToFirebase(List<Poule> poules) {
     final tournamentRef = FirebaseDatabase.instance.ref().child("tournois");
     DatabaseReference poulesRef =
-    tournamentRef.child(tournament.name).child('pouleList');
+    tournamentRef.child(tournament.id).child('pouleList');
 
     // Convertir chaque poule en données et les sauvegarder
     for (var poule in poules) {

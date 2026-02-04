@@ -122,27 +122,6 @@ class _DetailTournamentScreenState extends State<_DetailTournamentScreen>
                 if (ok == true) {
                   vm.onIntent(const DetailTournamentIntentDeleteConfirmed());
                 }
-               /* final ok = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: Text('delete_tournament_title'.tr()),
-                    content: Text('delete_tournament_confirm'.tr()),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(ctx).pop(false),
-                        child: Text('cancel'.tr()),
-                      ),
-                      FilledButton(
-                        onPressed: () => Navigator.of(ctx).pop(true),
-                        child: Text('delete'.tr()),
-                      ),
-                    ],
-                  ),
-                );
-
-                if (ok == true) {
-                  vm.onIntent(const DetailTournamentIntentDeleteConfirmed());
-                }*/
               },
             )
 
@@ -526,7 +505,7 @@ class _PoolPhaseTabState extends State<_PoolPhaseTab> {
             InkWell(
               onTap: () async {
                 final selectedPouleRef = tournamentRef
-                    .child(tournament.name)
+                    .child(tournament.id)
                     .child('pouleList')
                     .child(selectedPoule);
 
@@ -757,7 +736,7 @@ class _PoolPhaseTabState extends State<_PoolPhaseTab> {
       List<MatchTournament> quarterFinals,
       ) async {
     try {
-      await tournamentRef.child(tournament.name).update({
+      await tournamentRef.child(tournament.id).update({
         "quartFinal": quarterFinals.map((match) => match.toJson()).toList(),
       });
     } catch (e) {
@@ -1049,7 +1028,7 @@ class _BracketTabState extends State<_BracketTab> {
     final tournamentRef = FirebaseDatabase.instance
         .ref()
         .child("tournois")
-        .child(tournament.name);
+        .child(tournament.id);
     final end = tournament.finalMatchList;
 
     final quarterIndex = tournament.getIndex(end.quarterFinalList, match);

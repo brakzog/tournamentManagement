@@ -5,8 +5,7 @@ import 'package:tournament_management/models/match.dart';
 
 
 class Tournament {
-  // ⚠️ Ton code d’origine (vu dans tes ViewModels) ne stocke pas d'ID ici.
-  // L’ID Firebase est la clé du nœud. On garde ce choix pour éviter de casser.
+  final String id;
   final String name;
   final String sportEvent;           // type d’épreuve
   final TournamentDate tournamentDate;
@@ -17,6 +16,7 @@ class Tournament {
   EndTournament finalMatchList;      // 1/4, 1/2, finale (mutable chez toi)
 
   Tournament({
+    required this.id,
     required this.name,
     required this.sportEvent,
     required this.tournamentDate,
@@ -32,6 +32,7 @@ class Tournament {
     final rawParticipants = (json['participants'] ?? const []) as List?;
 
     return Tournament(
+      id: (json['id'] ?? '') as String,
       name: (json['name'] ?? '') as String,
       sportEvent: (json['sportEvent'] ?? '') as String,
       tournamentDate: json['tournamentDate'] is Map<String, dynamic>
@@ -55,6 +56,7 @@ class Tournament {
   }
 
   Map<String, dynamic> toJson() => {
+        'id': id,
         'name': name,
         'sportEvent': sportEvent,
         'tournamentDate': tournamentDate.toJson(),
@@ -66,6 +68,7 @@ class Tournament {
       };
 
   Tournament copyWith({
+    String? id,
     String? name,
     String? sportEvent,
     TournamentDate? tournamentDate,
@@ -76,6 +79,7 @@ class Tournament {
     EndTournament? finalMatchList,
   }) {
     return Tournament(
+      id: id ?? this.id,
       name: name ?? this.name,
       sportEvent: sportEvent ?? this.sportEvent,
       tournamentDate: tournamentDate ?? this.tournamentDate,
