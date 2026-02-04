@@ -100,6 +100,12 @@ class LoginViewModel extends ChangeNotifier {
         );
       }
 
+      // ✅ IMPORTANT (surtout pour ton bug "2e login") :
+      // on force une réauth propre (sinon Google réutilise parfois une session collante)
+      try {
+        await _googleSignIn.signOut();
+      } catch (_) {}
+
       // Nouvelle API : authenticate()
       final GoogleSignInAccount account =
       await _googleSignIn.authenticate(scopeHint: const ['email']);
@@ -115,12 +121,15 @@ class LoginViewModel extends ChangeNotifier {
       // Credential Firebase
       final credential = GoogleAuthProvider.credential(
         idToken: idToken,
-       // accessToken: googleAuth.accessToken, <== plus nécessaire aujourd hui
       );
 
       await _auth.signInWithCredential(credential);
 
-      // On garde ton stockage sécurisé
+      // (optionnel mais utile pour debug)
+      final user = FirebaseAuth.instance.currentUser;
+      debugPrint('[GOOGLE] Firebase user=${user?.uid}');
+
+      // Stockage sécurisé
       await _secureStorage.write(key: "googleUserId", value: account.id);
 
       _setState(
@@ -131,7 +140,6 @@ class LoginViewModel extends ChangeNotifier {
         ),
       );
     } on GoogleSignInException catch (e, st) {
-      // Gestion du "cancel" propre
       if (e.code == GoogleSignInExceptionCode.canceled) {
         _setState(
           _state.copyWith(
@@ -210,24 +218,27 @@ class LoginViewModel extends ChangeNotifier {
         ),
       );
     } on SignInWithAppleException catch (e, st) {
-      // Cancel = pas d’erreur UI
-      final isCanceled = e.hashCode == AuthorizationErrorCode.canceled;
-      final msg = isCanceled
-          ? null
-          : "Apple Sign-In a échoué : ${e.toString()}";
+      final s = e.toString().toLowerCase();
+
+      // Les lib Apple renvoient souvent "canceled"/"cancelled"
+      final isCanceled = s.contains('canceled') || s.contains('cancelled');
 
       if (kDebugMode) {
-        print(msg);
-        print(st);
+        debugPrint('[APPLE] isCanceled=$isCanceled error=$e');
+        debugPrint('$st');
       }
 
-      _setState(
-        _state.copyWith(
-          isLoading: false,
-          isSuccess: false,
-          errorMessage: msg,
-        ),
-      );
+      if (!isCanceled) {
+        _setState(
+          _state.copyWith(
+            isLoading: false,
+            errorMessage: "Erreur d'authentification Apple",
+          ),
+        );
+      } else {
+        // Cancel = pas d'erreur UI, mais on enlève le loading
+        _setState(_state.copyWith(isLoading: false));
+      }
     } catch (e, st) {
       final message = "Erreur d'authentification Apple : $e";
       if (kDebugMode) {

@@ -88,6 +88,11 @@ class DetailTournamentIntentDeleteRequested extends DetailTournamentIntent {
   const DetailTournamentIntentDeleteRequested();
 }
 
+class DetailTournamentIntentDeleteConfirmed extends DetailTournamentIntent {
+  const DetailTournamentIntentDeleteConfirmed();
+}
+
+
 
 class DetailTournamentViewModel extends ChangeNotifier {
   final Tournament tournament;
@@ -123,6 +128,8 @@ class DetailTournamentViewModel extends ChangeNotifier {
       await _handleGeneratePools();
     } else if (intent is DetailTournamentIntentDeleteRequested) {
       _onDeleteTournament();
+    } else if (intent is DetailTournamentIntentDeleteConfirmed) {
+      _handleDeleteConfirmed();
     }
     // plus tard : autres intents
   }
@@ -155,6 +162,31 @@ class DetailTournamentViewModel extends ChangeNotifier {
     tournamentRef.child(tournamentName);
     tournament.remove();
   }
+
+  Future<void> _handleDeleteConfirmed() async {
+    if (_state.isLoading) return;
+
+    _setState(_state.copyWith(isLoading: true, errorMessage: null));
+
+    try {
+      final tournamentId = _state.tournamentId; // adapte selon ton state
+      await FirebaseFirestore.instance
+          .collection('tournaments') // adapte le nom
+          .doc(tournamentId)
+          .delete();
+
+      _setState(_state.copyWith(
+        isLoading: false,
+        deleteSuccess: true,
+      ));
+    } catch (e) {
+      _setState(_state.copyWith(
+        isLoading: false,
+        errorMessage: "Erreur suppression : $e",
+      ));
+    }
+  }
+
 
 
 

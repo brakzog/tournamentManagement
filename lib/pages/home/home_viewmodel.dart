@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 /// --- STATE --- ///
 class HomeState {
@@ -48,6 +49,7 @@ class HomeViewModel extends ChangeNotifier {
 
   final FirebaseAuth _auth;
   final FlutterSecureStorage _storage;
+  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
 
   HomeViewModel({
     FirebaseAuth? auth,
@@ -89,6 +91,8 @@ class HomeViewModel extends ChangeNotifier {
       // Nettoyage des infos utilisateur, comme avant
       await _storage.delete(key: 'userId');
       await _storage.delete(key: 'googleUserId'); // bonus : ce qu’on a stocké au login
+      try { await _googleSignIn.signOut(); } catch (_) {}
+      try { await _googleSignIn.disconnect(); } catch (_) {}
       await _auth.signOut();
 
       _setState(

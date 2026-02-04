@@ -43,14 +43,6 @@ class HomePage extends StatelessWidget {
               tooltip: 'logout'.tr(),
               onPressed: () async {
                 await viewModel.onIntent(const HomeLogoutIntent());
-
-                // Si on arrive là sans erreur, on repart vers Login
-                if (context.mounted && state.errorMessage == null) {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const LoginPage()),
-                        (route) => false,
-                  );
-                }
               },
             ),
         ],

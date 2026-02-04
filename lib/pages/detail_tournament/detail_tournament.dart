@@ -96,8 +96,53 @@ class _DetailTournamentScreenState extends State<_DetailTournamentScreen>
           if (_canShowDeleteButton(state))
             IconButton(
               icon: const Icon(Icons.delete),
-              onPressed: () {
-                vm.onIntent(const DetailTournamentIntentDeleteRequested());
+              onPressed: () async {
+                final t = state.tournament;
+                if (t == null) return;
+
+                final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: Text('delete_tournament_title'.tr()),
+                    content: Text('delete_tournament_confirm'.tr()),
+
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: Text('cancel'.tr()),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        child: Text('delete'.tr()),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (ok == true) {
+                  vm.onIntent(const DetailTournamentIntentDeleteConfirmed());
+                }
+               /* final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: Text('delete_tournament_title'.tr()),
+                    content: Text('delete_tournament_confirm'.tr()),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: Text('cancel'.tr()),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        child: Text('delete'.tr()),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (ok == true) {
+                  vm.onIntent(const DetailTournamentIntentDeleteConfirmed());
+                }*/
               },
             )
 
