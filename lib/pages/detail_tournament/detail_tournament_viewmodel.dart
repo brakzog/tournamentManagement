@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:tournament_management/graphView/GraphView.dart';
+import 'package:tournament_management/models/bracket_format.dart';
 import 'package:tournament_management/models/end_tournament.dart';
 import 'package:tournament_management/models/match.dart';
 import 'package:tournament_management/models/poule.dart';
@@ -193,15 +194,19 @@ class DetailTournamentViewModel extends ChangeNotifier {
   Future<void> _handleGeneratePools() async {
     _setState(_state.copyWith(isLoading: true, errorMessage: null));
     try {
-      // Génère les poules à partir des participants du tournoi
-      await generatePoolsAndUpdateTournament();
+      if (tournament.bracketFormat == BracketFormat.directBracket) {
+        await startDirectBracket();
+      } else {
+        // Génère les poules à partir des participants du tournoi
+        await generatePoolsAndUpdateTournament();
+      }
 
       _setState(_state.copyWith(isLoading: false));
     } catch (e) {
       _setState(
         _state.copyWith(
           isLoading: false,
-          errorMessage: "Erreur lors de la génération des poules : $e",
+          errorMessage: "Erreur lors de la génération du tableau : $e",
         ),
       );
     }
@@ -317,6 +322,225 @@ class DetailTournamentViewModel extends ChangeNotifier {
     }
 
     await _repository.savePools(tournament.id, allPoulesData);
+  }
+
+  // --- Tableau direct (format sans poules) ---
+
+  /// Génère le 1er tour du tableau direct, à partir du nombre de
+  /// participants et du choix de repêchage (voir [computeFirstRoundPlan]).
+  Future<void> startDirectBracket() async {
+    final plan = computeFirstRoundPlan(
+      tournament.participants.length,
+      useRepechage: tournament.useRepechage,
+    );
+
+    final shuffled = List<String>.from(tournament.participants)..shuffle();
+    final round1Players = shuffled.sublist(0, plan.firstRoundPlayers);
+
+    tournament.finalMatchList.directBracketRounds = [_pairIntoMatches(round1Players)];
+
+    await _repository.saveDirectBracketRounds(
+      tournament.id,
+      tournament.finalMatchList.directBracketRounds,
+    );
+
+    notifyListeners();
+  }
+
+  List<MatchTournament> _pairIntoMatches(List<String> players) {
+    final matches = <MatchTournament>[];
+    for (int i = 0; i < players.length; i += 2) {
+      matches.add(MatchTournament(
+        player1: players[i],
+        player2: players[i + 1],
+        score: '',
+        date: calculateDate("poule"),
+        location: tournament.location,
+      ));
+    }
+    return matches;
+  }
+
+  /// Détermine la phase applicable à un match du tableau direct pour
+  /// choisir les bonnes [MatchRules] : les tours normaux utilisent les
+  /// règles par défaut (comme les poules), le dernier tour (2 matchs, sur
+  /// le point d'être promu vers les demies) utilise les règles de la
+  /// phase finale.
+  TournamentPhase phaseForDirectBracketMatch(MatchTournament match) {
+    for (final round in tournament.finalMatchList.directBracketRounds) {
+      final found = round.any((m) =>
+          (m.player1 == match.player1 && m.player2 == match.player2) ||
+          (m.player1 == match.player2 && m.player2 == match.player1));
+      if (found) {
+        return round.length == 2
+            ? TournamentPhase.SEMI_FINAL
+            : TournamentPhase.GROUP;
+      }
+    }
+    return TournamentPhase.GROUP;
+  }
+
+  /// Enregistre le score d'un match du tableau direct, et fait progresser
+  /// le tableau d'un cran si le tour courant vient d'être complété.
+  Future<void> submitDirectBracketMatchScore(MatchTournament newMatch) async {
+    final rounds = tournament.finalMatchList.directBracketRounds;
+
+    int? roundIndex;
+    int? matchIndex;
+    for (int r = 0; r < rounds.length; r++) {
+      final idx = rounds[r].indexWhere((m) =>
+          (m.player1 == newMatch.player1 && m.player2 == newMatch.player2) ||
+          (m.player1 == newMatch.player2 && m.player2 == newMatch.player1));
+      if (idx != -1) {
+        roundIndex = r;
+        matchIndex = idx;
+        break;
+      }
+    }
+
+    if (roundIndex == null || matchIndex == null) return;
+
+    final ref = _repository
+        .tournamentRef(tournament.id)
+        .child('directBracketRounds')
+        .child(roundIndex.toString())
+        .child(matchIndex.toString());
+
+    await _repository.updateBracketMatch(ref, newMatch);
+
+    rounds[roundIndex][matchIndex] = newMatch;
+
+    await _maybeAdvanceDirectBracket();
+
+    notifyListeners();
+  }
+
+  /// Fait progresser le tableau direct d'un cran si le tour courant vient
+  /// d'être entièrement joué : génère le tour suivant (avec byes/repêchage
+  /// uniquement lors de la transition 1er -> 2e tour), ou promeut le
+  /// dernier tour (2 matchs) vers les demies pour réutiliser la logique
+  /// existante de génération finale / petite finale.
+  Future<void> _maybeAdvanceDirectBracket() async {
+    final rounds = tournament.finalMatchList.directBracketRounds;
+    if (rounds.isEmpty) return;
+
+    final currentRoundIndex = rounds.length - 1;
+    final currentRound = rounds[currentRoundIndex];
+
+    if (!_allPlayed(currentRound)) return;
+
+    if (currentRound.length == 2) {
+      if (tournament.finalMatchList.semiFinalist.isEmpty) {
+        tournament.finalMatchList.semiFinalist =
+            List<MatchTournament>.from(currentRound);
+        await _repository.saveSemiFinals(
+          tournament.id,
+          tournament.finalMatchList.semiFinalist,
+        );
+        // Réutilise la logique existante : détecte que les demies sont
+        // désormais jouées et enchaîne sur la génération de la finale.
+        _maybeAdvanceBracket();
+      }
+      return;
+    }
+
+    final qualifiers = <String>[];
+
+    if (currentRoundIndex == 0) {
+      final winners = currentRound.map(getWinner).toList();
+
+      final playedPlayers = <String>{};
+      for (final m in currentRound) {
+        playedPlayers.add(m.player1);
+        playedPlayers.add(m.player2);
+      }
+      final byePlayers = tournament.participants
+          .where((p) => !playedPlayers.contains(p))
+          .toList();
+
+      qualifiers.addAll(winners);
+      qualifiers.addAll(byePlayers);
+
+      if (tournament.useRepechage) {
+        final plan = computeFirstRoundPlan(
+          tournament.participants.length,
+          useRepechage: true,
+        );
+        if (plan.repechageNeeded > 0) {
+          final losersRanked = _rankLosersForRepechage(currentRound);
+          qualifiers.addAll(losersRanked.take(plan.repechageNeeded));
+        }
+      }
+    } else {
+      qualifiers.addAll(currentRound.map(getWinner));
+    }
+
+    final nextRound = _pairIntoMatches(qualifiers);
+    tournament.finalMatchList.directBracketRounds = [...rounds, nextRound];
+
+    await _repository.saveDirectBracketRounds(
+      tournament.id,
+      tournament.finalMatchList.directBracketRounds,
+    );
+  }
+
+  /// Classe les perdants d'un tour pour le repêchage : d'abord par nombre
+  /// de sets gagnés dans leur défaite (plus il y en a, mieux classé), puis
+  /// par nombre de points marqués dans le(s) set(s) perdu(s) (départage).
+  /// En format "1 set gagnant", le 1er critère est toujours à égalité et
+  /// le classement se fait entièrement sur le 2e.
+  List<String> _rankLosersForRepechage(List<MatchTournament> round) {
+    final entries = round.map((m) {
+      final winner = getWinner(m);
+      final loser = m.player1 == winner ? m.player2 : m.player1;
+      return MapEntry(loser, m);
+    }).toList();
+
+    entries.sort((a, b) {
+      final setsA = _setsWonByPlayer(a.value, a.key);
+      final setsB = _setsWonByPlayer(b.value, b.key);
+      if (setsA != setsB) return setsB.compareTo(setsA);
+
+      final pointsA = _pointsInLostSets(a.value, a.key);
+      final pointsB = _pointsInLostSets(b.value, b.key);
+      return pointsB.compareTo(pointsA);
+    });
+
+    return entries.map((e) => e.key).toList();
+  }
+
+  int _setsWonByPlayer(MatchTournament match, String player) {
+    final sets = match.score.split(';');
+    int count = 0;
+    for (final s in sets) {
+      final parts = s.trim().split('-');
+      if (parts.length != 2) continue;
+      final p1 = int.tryParse(parts[0]) ?? 0;
+      final p2 = int.tryParse(parts[1]) ?? 0;
+      final isPlayer1 = match.player1 == player;
+      final playerScore = isPlayer1 ? p1 : p2;
+      final opponentScore = isPlayer1 ? p2 : p1;
+      if (playerScore > opponentScore) count++;
+    }
+    return count;
+  }
+
+  int _pointsInLostSets(MatchTournament match, String player) {
+    final sets = match.score.split(';');
+    int total = 0;
+    for (final s in sets) {
+      final parts = s.trim().split('-');
+      if (parts.length != 2) continue;
+      final p1 = int.tryParse(parts[0]) ?? 0;
+      final p2 = int.tryParse(parts[1]) ?? 0;
+      final isPlayer1 = match.player1 == player;
+      final playerScore = isPlayer1 ? p1 : p2;
+      final opponentScore = isPlayer1 ? p2 : p1;
+      if (playerScore < opponentScore) {
+        total += playerScore;
+      }
+    }
+    return total;
   }
 
   // --- Phase de poules : lecture / saisie de score ---
@@ -472,8 +696,15 @@ class DetailTournamentViewModel extends ChangeNotifier {
 
   // --- Phase finale : quarts / demies / finale / petite finale ---
 
-  bool get isBracketReady =>
-      tournament.finalMatchList.quarterFinalList.length >= _requiredQuarterFinals;
+  /// Prêt à afficher l'arbre (demies/finale) : selon le format, une fois
+  /// les quarts générés (poules), ou une fois le tableau direct promu
+  /// jusqu'aux demies (tableau direct).
+  bool get isBracketReady {
+    if (tournament.bracketFormat == BracketFormat.directBracket) {
+      return tournament.finalMatchList.semiFinalist.isNotEmpty;
+    }
+    return tournament.finalMatchList.quarterFinalList.length >= _requiredQuarterFinals;
+  }
 
   DatabaseReference getTournamentRef(MatchTournament match) {
     final tournamentRef = _repository.tournamentRef(tournament.id);
@@ -495,6 +726,24 @@ class DetailTournamentViewModel extends ChangeNotifier {
 
     // Sinon on considère que c'est la finale
     return tournamentRef.child('finalMatch');
+  }
+
+  /// Détermine la phase d'un match (par paire de joueurs, même détection
+  /// que [getTournamentRef]), pour savoir quelles [MatchRules] appliquer
+  /// (voir [Tournament.rules] / [TournamentRules.rulesFor]).
+  TournamentPhase phaseFor(MatchTournament match) {
+    final end = tournament.finalMatchList;
+
+    if (tournament.getIndex(end.quarterFinalList, match) != -1) {
+      return TournamentPhase.QUARTER_FINAL;
+    }
+    if (tournament.getIndex(end.semiFinalist, match) != -1) {
+      return TournamentPhase.SEMI_FINAL;
+    }
+    if (_isSameMatch(end.smallFinalMatch, match)) {
+      return TournamentPhase.SMALL_FINAL;
+    }
+    return TournamentPhase.FINAL;
   }
 
   List<String> getPlayerList(List<MatchTournament> listMatch) {
@@ -766,5 +1015,117 @@ class DetailTournamentViewModel extends ChangeNotifier {
       MatchTournament m, int id, bool isPlayer1) {
     final name = isPlayer1 ? m.player1 : m.player2;
     return TournamentNode(id, name, match: m);
+  }
+
+  // --- Arbre pour le tableau direct (profondeur variable) ---
+
+  int _nodeIdCounter = 0;
+
+  int _nextNodeId() {
+    final id = _nodeIdCounter;
+    _nodeIdCounter++;
+    return id;
+  }
+
+  /// Construit l'arbre visuel pour un tournoi en tableau direct, dont la
+  /// profondeur (nombre de tours avant les demies) est variable selon le
+  /// nombre de participants — contrairement à [createTournamentTree], câblé
+  /// en dur sur la forme fixe quarts(4)/demies(2) du format poules.
+  ///
+  /// Remonte récursivement l'historique de chaque demi-finaliste à travers
+  /// [EndTournament.directBracketRounds] jusqu'au 1er tour. Les byes et
+  /// repêchés (qui n'ont pas de match à un tour donné) deviennent
+  /// naturellement des feuilles sans enfant, sans cas particulier à gérer.
+  Graph createDirectBracketTree() {
+    _nodeIdCounter = 0;
+    final endTournament = tournament.finalMatchList;
+    final Graph graph = Graph()..isTree = true;
+
+    final TournamentNode winnerNode = TournamentNode(
+        _nextNodeId(), "Winner: ${getWinner(endTournament.finalMatch)}");
+
+    final TournamentNode finalPlayer1Node = TournamentNode(
+        _nextNodeId(), endTournament.finalMatch.player1,
+        match: endTournament.finalMatch);
+    final TournamentNode finalPlayer2Node = TournamentNode(
+        _nextNodeId(), endTournament.finalMatch.player2,
+        match: endTournament.finalMatch);
+
+    graph.addEdge(winnerNode, finalPlayer1Node);
+    graph.addEdge(winnerNode, finalPlayer2Node);
+
+    _attachDirectBracketSemiSubtree(graph, finalPlayer1Node, 0, endTournament);
+    _attachDirectBracketSemiSubtree(graph, finalPlayer2Node, 1, endTournament);
+
+    return graph;
+  }
+
+  /// Rattache au graphe le sous-arbre du demi-finaliste [semiIndex] (0 ou
+  /// 1). Le dernier tour de [EndTournament.directBracketRounds] EST
+  /// [EndTournament.semiFinalist] (promu tel quel une fois joué, voir
+  /// [_maybeAdvanceDirectBracket]) : la remontée démarre donc un cran
+  /// avant lui, pour ne pas représenter ce tour deux fois.
+  void _attachDirectBracketSemiSubtree(
+      Graph graph,
+      TournamentNode parentNode,
+      int semiIndex,
+      EndTournament endTournament,
+      ) {
+    if (semiIndex >= endTournament.semiFinalist.length) return;
+    final semiMatch = endTournament.semiFinalist[semiIndex];
+    final rounds = endTournament.directBracketRounds;
+
+    final searchFromIndex = rounds.length - 2;
+
+    final p1Node = _buildDirectBracketPlayerSubtree(
+        graph, semiMatch.player1, searchFromIndex, rounds, semiMatch);
+    final p2Node = _buildDirectBracketPlayerSubtree(
+        graph, semiMatch.player2, searchFromIndex, rounds, semiMatch);
+
+    graph.addEdge(parentNode, p1Node);
+    graph.addEdge(parentNode, p2Node);
+  }
+
+  /// Construit récursivement le sous-arbre menant à [playerName], en
+  /// remontant les tours de [rounds] depuis [roundIndex] jusqu'au 1er tour
+  /// (index 0). [fallbackMatch] est le match utilisé pour ce nœud (celui
+  /// où [playerName] apparaît au tour *suivant*, pas encore trouvé ici).
+  ///
+  /// Si [playerName] n'apparaît pas au tour [roundIndex] (bye ou
+  /// repêché à ce tour précis), le nœud devient une feuille sans enfant :
+  /// aucun cas particulier à gérer, la récursion s'arrête naturellement.
+  TournamentNode _buildDirectBracketPlayerSubtree(
+      Graph graph,
+      String playerName,
+      int roundIndex,
+      List<List<MatchTournament>> rounds,
+      MatchTournament fallbackMatch,
+      ) {
+    final node = TournamentNode(_nextNodeId(), playerName, match: fallbackMatch);
+
+    if (roundIndex < 0) return node;
+
+    MatchTournament? originMatch;
+    for (final m in rounds[roundIndex]) {
+      if (m.player1 == playerName || m.player2 == playerName) {
+        originMatch = m;
+        break;
+      }
+    }
+
+    if (originMatch == null) {
+      // Bye ou repêché à ce tour : rien à tracer plus loin.
+      return node;
+    }
+
+    final p1Sub = _buildDirectBracketPlayerSubtree(
+        graph, originMatch.player1, roundIndex - 1, rounds, originMatch);
+    final p2Sub = _buildDirectBracketPlayerSubtree(
+        graph, originMatch.player2, roundIndex - 1, rounds, originMatch);
+
+    graph.addEdge(node, p1Sub);
+    graph.addEdge(node, p2Sub);
+
+    return node;
   }
 }

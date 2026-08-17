@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:tournament_management/graphView/GraphView.dart';
+import 'package:tournament_management/models/bracket_format.dart';
 import 'package:tournament_management/models/match.dart';
 import 'package:tournament_management/models/poule.dart';
 import 'package:tournament_management/models/tournament.dart';
+import 'package:tournament_management/models/tournament_phase.dart';
 import 'package:tournament_management/utils.dart';
 import 'package:tournament_management/widgets/tournament_node.dart';
 
@@ -109,7 +111,7 @@ class _DetailTournamentScreenState extends State<_DetailTournamentScreen>
                         onPressed: () => Navigator.of(ctx).pop(false),
                         child: Text('cancel'.tr()),
                       ),
-                      FilledButton(
+                      ElevatedButton(
                         onPressed: () => Navigator.of(ctx).pop(true),
                         child: Text('cancel_tournament_confirm_button'.tr()),
                       ),
@@ -140,7 +142,7 @@ class _DetailTournamentScreenState extends State<_DetailTournamentScreen>
                         onPressed: () => Navigator.of(ctx).pop(false),
                         child: Text('cancel'.tr()),
                       ),
-                      FilledButton(
+                      ElevatedButton(
                         onPressed: () => Navigator.of(ctx).pop(true),
                         child: Text('delete'.tr()),
                       ),
@@ -158,7 +160,11 @@ class _DetailTournamentScreenState extends State<_DetailTournamentScreen>
         bottom: TabBar(
           controller: _tabController,
           tabs: [
-            Tab(text: "poule_phase".tr()),
+            Tab(
+              text: vm.tournament.bracketFormat == BracketFormat.directBracket
+                  ? "direct_bracket_phase".tr()
+                  : "poule_phase".tr(),
+            ),
             Tab(text: "arbre_deroulement".tr()),
           ],
         ),
@@ -190,7 +196,9 @@ class _DetailTournamentScreenState extends State<_DetailTournamentScreen>
             child: TabBarView(
               controller: _tabController,
               children: [
-                _PoolPhaseTab(tabController: _tabController),
+                vm.tournament.bracketFormat == BracketFormat.directBracket
+                    ? const _DirectBracketTab()
+                    : _PoolPhaseTab(tabController: _tabController),
                 const _BracketTab(),
               ],
             ),
@@ -292,6 +300,154 @@ Widget _rectangleWidget(
 // ======================================================================
 //                          ONGLET POULES
 // ======================================================================
+
+// ======================================================================
+//                    ONGLET TABLEAU DIRECT (sans poules)
+// ======================================================================
+//
+// Affichage volontairement simple (liste des tours), en attendant une
+// généralisation de l'arbre visuel à une profondeur variable (voir
+// createTournamentTree / _BracketTab, câblés en dur sur la forme
+// quarts(4) -> demies(2) -> finale).
+
+class _DirectBracketTab extends StatelessWidget {
+  const _DirectBracketTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = context.watch<DetailTournamentViewModel>();
+    final tournament = vm.tournament;
+    final rounds = tournament.finalMatchList.directBracketRounds;
+
+    if (rounds.isEmpty) {
+      return Center(
+        child: ElevatedButton(
+          onPressed: () async {
+            await vm.startDirectBracket();
+          },
+          child: Text("start_tournament".tr()),
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (int i = 0; i < rounds.length; i++)
+            _buildRoundSection(context, vm, tournament, rounds[i], i),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRoundSection(
+      BuildContext context,
+      DetailTournamentViewModel vm,
+      Tournament tournament,
+      List<MatchTournament> round,
+      int roundIndex,
+      ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "direct_bracket_round_title".tr(args: ["${roundIndex + 1}"]),
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 6.0),
+          ...round.map(
+                (m) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4.0),
+              child: m.score.isEmpty
+                  ? _buildPlayableMatchRow(context, vm, tournament, m)
+                  : Text("${m.player1} VS ${m.player2} : ${m.score}"),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlayableMatchRow(
+      BuildContext context,
+      DetailTournamentViewModel vm,
+      Tournament tournament,
+      MatchTournament match,
+      ) {
+    return InkWell(
+      onTap: () => _showDirectBracketScoreDialog(context, vm, tournament, match),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(8.0),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.blue, width: 1),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text("${match.player1} VS ${match.player2}"),
+      ),
+    );
+  }
+
+  void _showDirectBracketScoreDialog(
+      BuildContext context,
+      DetailTournamentViewModel vm,
+      Tournament tournament,
+      MatchTournament match,
+      ) {
+    TextEditingController scoreController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text('result_match_input'.tr()),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("${match.player1} VS ${match.player2}"),
+              const SizedBox(height: 10),
+              TextField(
+                controller: scoreController,
+                decoration: InputDecoration(labelText: 'score_input'.tr()),
+              ),
+            ],
+          ),
+          actions: [
+            InkWell(
+              onTap: () async {
+                final rules = tournament.rules.rulesFor(
+                  vm.phaseForDirectBracketMatch(match),
+                );
+                final validation =
+                validateMatchScore(scoreController.text, rules);
+
+                if (validation.isValid) {
+                  final newMatch = MatchTournament(
+                    player1: match.player1,
+                    player2: match.player2,
+                    score: scoreController.text,
+                    date: match.date,
+                    location: match.location,
+                  );
+                  await vm.submitDirectBracketMatchScore(newMatch);
+                  if (context.mounted) Navigator.of(dialogContext).pop();
+                } else {
+                  showErrorDialog(context, validation.errorKey!.tr());
+                }
+              },
+              child: Text('valid'.tr()),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
 
 class _PoolPhaseTab extends StatelessWidget {
   final TabController tabController;
@@ -595,16 +751,24 @@ class _PoolPhaseTab extends StatelessWidget {
                     args: [selectedPlayer1, selectedPlayer2],
                   );
                   bool? result = await showAskDialog(context, message);
-                  if (result == true &&
-                      isValidScoreFormat(scoreController.text)) {
+                  final validation = validateMatchScore(
+                    scoreController.text,
+                    tournament.rules.rulesFor(TournamentPhase.GROUP),
+                  );
+                  if (result == true && validation.isValid) {
                     await submitScore();
+                  } else if (result == true) {
+                    showErrorDialog(context, validation.errorKey!.tr());
                   }
                 } else {
-                  if (isValidScoreFormat(scoreController.text)) {
+                  final validation = validateMatchScore(
+                    scoreController.text,
+                    tournament.rules.rulesFor(TournamentPhase.GROUP),
+                  );
+                  if (validation.isValid) {
                     await submitScore();
                   } else {
-                    showErrorDialog(
-                        context, 'score_format_incorrect'.tr());
+                    showErrorDialog(context, validation.errorKey!.tr());
                   }
                 }
               },
@@ -700,7 +864,9 @@ class _BracketTabState extends State<_BracketTab> {
                   tournament,
                   node as TournamentNode,
                 ),
-                graph: vm.createTournamentTree(),
+                graph: tournament.bracketFormat == BracketFormat.directBracket
+                    ? vm.createDirectBracketTree()
+                    : vm.createTournamentTree(),
                 algorithm: BuchheimWalkerAlgorithm(
                   builder,
                   TreeEdgeRenderer(builder),
@@ -832,7 +998,19 @@ class _BracketTabState extends State<_BracketTab> {
           actions: [
             InkWell(
               onTap: () async {
-                if (isValidScoreFormat(scoreController.text)) {
+                final tempMatch = MatchTournament(
+                  player1: selectedPlayer1,
+                  player2: selectedPlayer2,
+                  score: '',
+                  date: '',
+                  location: tournament.location,
+                );
+                final rules =
+                tournament.rules.rulesFor(vm.phaseFor(tempMatch));
+                final validation =
+                validateMatchScore(scoreController.text, rules);
+
+                if (validation.isValid) {
                   MatchTournament newMatch = MatchTournament(
                     player1: selectedPlayer1,
                     player2: selectedPlayer2,
@@ -844,7 +1022,7 @@ class _BracketTabState extends State<_BracketTab> {
                   await vm.submitBracketMatchScore(newMatch);
                   if (context.mounted) Navigator.of(dialogContext).pop();
                 } else {
-                  showErrorDialog(context, 'score_format_incorrect'.tr());
+                  showErrorDialog(context, validation.errorKey!.tr());
                 }
               },
               child: Text('valid'.tr()),
@@ -928,7 +1106,12 @@ class _BracketTabState extends State<_BracketTab> {
           actions: [
             InkWell(
               onTap: () async {
-                if (isValidScoreFormat(scoreController.text)) {
+                final rules =
+                tournament.rules.rulesFor(TournamentPhase.SMALL_FINAL);
+                final validation =
+                validateMatchScore(scoreController.text, rules);
+
+                if (validation.isValid) {
                   final time = DateTime.now();
                   MatchTournament newMatch = MatchTournament(
                     player1: selectedPlayer1,
@@ -940,7 +1123,7 @@ class _BracketTabState extends State<_BracketTab> {
                   await vm.submitBracketMatchScore(newMatch);
                   if (context.mounted) Navigator.of(dialogContext).pop();
                 } else {
-                  showErrorDialog(context, 'score_format_incorrect'.tr());
+                  showErrorDialog(context, validation.errorKey!.tr());
                 }
               },
               child: Text('valid'.tr()),

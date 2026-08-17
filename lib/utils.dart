@@ -2,7 +2,190 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:tournament_management/models/match.dart';
+import 'package:tournament_management/models/match_rules.dart';
 import 'package:tournament_management/models/poule.dart';
+
+/// Calcule la taille de tableau (puissance de 2) immédiatement supérieure
+/// ou égale à [n]. Ex: 13 -> 16, 8 -> 8, 5 -> 8.
+int nextPowerOfTwo(int n) {
+  if (n < 1) return 1;
+  int power = 1;
+  while (power < n) {
+    power *= 2;
+  }
+  return power;
+}
+
+/// Plan du premier tour d'un tableau à élimination directe (sans poules).
+///
+/// - Sans repêchage : le tableau est directement dimensionné à la
+///   puissance de 2 supérieure au nombre de participants ; l'écart donne
+///   les exempts ("byes") du 1er tour, qualifiés d'office pour le 2e tour.
+/// - Avec repêchage : tous les participants jouent le 1er tour (parité
+///   gérée par un bye si nombre impair, inévitable mathématiquement) ; le
+///   2e tour est dimensionné à la puissance de 2 supérieure au nombre de
+///   qualifiés naturels (vainqueurs + bye éventuel), et le repêchage
+///   comble exactement l'écart restant — aucun bye supplémentaire.
+class FirstRoundPlan {
+  final int totalParticipants;
+
+  /// Nombre de participants qui jouent réellement le 1er tour.
+  final int firstRoundPlayers;
+
+  /// Nombre de matchs joués au 1er tour.
+  final int firstRoundMatches;
+
+  /// Exempts directs du 1er tour (qualifiés sans jouer). Sans repêchage,
+  /// peut être > 1 (écart à la puissance de 2). Avec repêchage, vaut 0 ou
+  /// 1 uniquement (parité).
+  final int firstRoundByes;
+
+  /// Taille du 2e tour (nombre de qualifiés qui s'affronteront ensuite).
+  final int nextRoundSize;
+
+  /// Nombre de repêchés nécessaires pour compléter le 2e tour (0 si le
+  /// tournoi ne repêche pas, ou si aucun repêché n'est nécessaire).
+  final int repechageNeeded;
+
+  const FirstRoundPlan({
+    required this.totalParticipants,
+    required this.firstRoundPlayers,
+    required this.firstRoundMatches,
+    required this.firstRoundByes,
+    required this.nextRoundSize,
+    required this.repechageNeeded,
+  });
+}
+
+/// Calcule le [FirstRoundPlan] pour [totalParticipants] participants,
+/// selon que le tournoi utilise ou non le repêchage.
+FirstRoundPlan computeFirstRoundPlan(
+    int totalParticipants, {
+      required bool useRepechage,
+    }) {
+  if (totalParticipants < 1) {
+    return const FirstRoundPlan(
+      totalParticipants: 0,
+      firstRoundPlayers: 0,
+      firstRoundMatches: 0,
+      firstRoundByes: 0,
+      nextRoundSize: 0,
+      repechageNeeded: 0,
+    );
+  }
+
+  if (useRepechage) {
+    final bool hasOddBye = totalParticipants.isOdd;
+    final int matches = totalParticipants ~/ 2;
+    final int naturalQualifiers = matches + (hasOddBye ? 1 : 0);
+    final int nextRoundSize = nextPowerOfTwo(naturalQualifiers);
+    // Invariant mathématique : nextPowerOfTwo(x) - x < x pour tout x >= 1,
+    // donc repechageNeeded < naturalQualifiers <= matches + 1. Il y a donc
+    // toujours assez de perdants du 1er tour pour fournir les repêchés
+    // nécessaires, sans jamais dépasser leur nombre.
+    final int repechageNeeded = nextRoundSize - naturalQualifiers;
+
+    return FirstRoundPlan(
+      totalParticipants: totalParticipants,
+      firstRoundPlayers: totalParticipants,
+      firstRoundMatches: matches,
+      firstRoundByes: hasOddBye ? 1 : 0,
+      nextRoundSize: nextRoundSize,
+      repechageNeeded: repechageNeeded,
+    );
+  }
+
+  final int bracketSize = nextPowerOfTwo(totalParticipants);
+  final int byes = bracketSize - totalParticipants;
+  final int firstRoundPlayers = totalParticipants - byes;
+
+  return FirstRoundPlan(
+    totalParticipants: totalParticipants,
+    firstRoundPlayers: firstRoundPlayers,
+    firstRoundMatches: firstRoundPlayers ~/ 2,
+    firstRoundByes: byes,
+    nextRoundSize: bracketSize ~/ 2,
+    repechageNeeded: 0,
+  );
+}
+
+
+/// Résultat de la validation d'un score de match par rapport aux
+/// [MatchRules] de la phase concernée.
+class ScoreValidationResult {
+  final bool isValid;
+  final String? errorKey; // clé de traduction, non nulle si invalide
+
+  const ScoreValidationResult._(this.isValid, this.errorKey);
+
+  factory ScoreValidationResult.valid() => const ScoreValidationResult._(true, null);
+
+  factory ScoreValidationResult.invalid(String errorKey) =>
+      ScoreValidationResult._(false, errorKey);
+}
+
+/// Valide un score de match complet ("6-4;3-6;7-5") par rapport aux
+/// [MatchRules] applicables : format, victoire légitime de chaque set
+/// (seuil de points atteint, écart de 2 points si requis), et cohérence
+/// du nombre de sets avec [MatchRules.setsToWin] (pas de set en trop une
+/// fois le match déjà décidé, pas de match laissé incomplet).
+ScoreValidationResult validateMatchScore(String score, MatchRules rules) {
+  final trimmed = score.trim();
+  if (trimmed.isEmpty) {
+    return ScoreValidationResult.invalid('score_empty');
+  }
+
+  final setStrings = trimmed.split(';');
+
+  int player1SetsWon = 0;
+  int player2SetsWon = 0;
+
+  for (final rawSet in setStrings) {
+    final setStr = rawSet.trim();
+    final parts = setStr.split('-');
+    if (parts.length != 2) {
+      return ScoreValidationResult.invalid('score_format_incorrect');
+    }
+
+    final p1 = int.tryParse(parts[0].trim());
+    final p2 = int.tryParse(parts[1].trim());
+    if (p1 == null || p2 == null || p1 < 0 || p2 < 0) {
+      return ScoreValidationResult.invalid('score_format_incorrect');
+    }
+
+    if (p1 == p2) {
+      return ScoreValidationResult.invalid('score_set_tied');
+    }
+
+    final winnerScore = p1 > p2 ? p1 : p2;
+    final loserScore = p1 > p2 ? p2 : p1;
+
+    if (winnerScore < rules.pointsPerSet) {
+      return ScoreValidationResult.invalid('score_set_incomplete');
+    }
+
+    if (rules.winByTwo && (winnerScore - loserScore) < 2) {
+      return ScoreValidationResult.invalid('score_set_win_by_two');
+    }
+
+    // Le match était déjà décidé avant ce set : il n'aurait pas dû être joué.
+    if (player1SetsWon >= rules.setsToWin || player2SetsWon >= rules.setsToWin) {
+      return ScoreValidationResult.invalid('score_extra_sets');
+    }
+
+    if (p1 > p2) {
+      player1SetsWon++;
+    } else {
+      player2SetsWon++;
+    }
+  }
+
+  if (player1SetsWon < rules.setsToWin && player2SetsWon < rules.setsToWin) {
+    return ScoreValidationResult.invalid('score_match_incomplete');
+  }
+
+  return ScoreValidationResult.valid();
+}
 
 String getWinner(MatchTournament match) {
   if (match.score == "") {
@@ -44,13 +227,6 @@ String getLoser(MatchTournament match) {
 
   final winner = getWinner(match);
   return winner == match.player1 ? match.player2 : match.player1;
-}
-
-/// Vérifie que le score respecte le format "Xi-Yi;Xi+1-Yi+1;..." attendu
-/// partout dans l'app pour un score de match.
-bool isValidScoreFormat(String score) {
-  final RegExp regex = RegExp(r'^\d+-\d+(;\d+-\d+)*$');
-  return regex.hasMatch(score);
 }
 
 List<String> calculateRanking(Poule poule) {

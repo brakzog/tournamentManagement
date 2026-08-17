@@ -1,7 +1,9 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:tournament_management/models/bracket_format.dart';
 import 'package:tournament_management/pages/create_tournament/create_tournament_viewmodel.dart';
+import 'package:tournament_management/utils.dart';
 import 'package:tournament_management/widgets/address_autocomplete.dart';
 
 class CreateTournamentPage extends StatefulWidget {
@@ -88,6 +90,10 @@ class _CreateTournamentPageState extends State<CreateTournamentPage> {
 
               const SizedBox(height: 16.0),
 
+              _buildBracketFormatSection(viewModel, state),
+
+              const SizedBox(height: 24.0),
+
               // Dates
               Text(
                 "${"tournament_date_definition".tr()} : \n"
@@ -100,6 +106,10 @@ class _CreateTournamentPageState extends State<CreateTournamentPage> {
                 ),
                 child: Text("tournament_begin_date".tr()),
               ),
+
+              const SizedBox(height: 24.0),
+
+              _buildMatchRulesSection(viewModel, state),
 
               const SizedBox(height: 16.0),
 
@@ -150,6 +160,165 @@ class _CreateTournamentPageState extends State<CreateTournamentPage> {
     return TextFormField(
       controller: controller,
       decoration: InputDecoration(labelText: label),
+    );
+  }
+
+  Widget _buildBracketFormatSection(
+      CreateTournamentViewModel viewModel,
+      CreateTournamentState state,
+      ) {
+    final bool isDirectBracket = state.bracketFormat == BracketFormat.directBracket;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "bracket_format_section".tr(),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8.0),
+        Wrap(
+          spacing: 8,
+          children: [
+            ChoiceChip(
+              label: Text("bracket_format_poules".tr()),
+              selected: state.bracketFormat == BracketFormat.poules,
+              onSelected: (_) => viewModel.onIntent(
+                const SelectBracketFormatIntent(BracketFormat.poules),
+              ),
+            ),
+            ChoiceChip(
+              label: Text("bracket_format_direct".tr()),
+              selected: state.bracketFormat == BracketFormat.directBracket,
+              onSelected: (_) => viewModel.onIntent(
+                const SelectBracketFormatIntent(BracketFormat.directBracket),
+              ),
+            ),
+          ],
+        ),
+        if (isDirectBracket) ...[
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text("use_repechage".tr()),
+            subtitle: Text("use_repechage_hint".tr()),
+            value: state.useRepechage,
+            onChanged: (_) =>
+                viewModel.onIntent(const ToggleUseRepechageIntent()),
+          ),
+          if (state.guests.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4.0),
+              child: Text(
+                _describeFirstRoundPlan(state),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+
+  String _describeFirstRoundPlan(CreateTournamentState state) {
+    final plan = computeFirstRoundPlan(
+      state.guests.length,
+      useRepechage: state.useRepechage,
+    );
+
+    if (state.useRepechage) {
+      return "first_round_plan_repechage".tr(args: [
+        plan.firstRoundMatches.toString(),
+        plan.firstRoundByes.toString(),
+        plan.repechageNeeded.toString(),
+        plan.nextRoundSize.toString(),
+      ]);
+    }
+
+    return "first_round_plan_no_repechage".tr(args: [
+      plan.firstRoundMatches.toString(),
+      plan.firstRoundByes.toString(),
+      plan.nextRoundSize.toString(),
+    ]);
+  }
+
+  Widget _buildMatchRulesSection(
+      CreateTournamentViewModel viewModel,
+      CreateTournamentState state,
+      ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "match_rules_section".tr(),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8.0),
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: viewModel.pointsPerSetController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(labelText: "points_per_set".tr()),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextFormField(
+                controller: viewModel.setsToWinController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(labelText: "sets_to_win".tr()),
+              ),
+            ),
+          ],
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text("win_by_two".tr()),
+          value: state.winByTwo,
+          onChanged: (_) =>
+              viewModel.onIntent(const ToggleWinByTwoIntent()),
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text("use_final_phase_rules".tr()),
+          subtitle: Text("use_final_phase_rules_hint".tr()),
+          value: state.useFinalPhaseRules,
+          onChanged: (_) => viewModel
+              .onIntent(const ToggleUseFinalPhaseRulesIntent()),
+        ),
+        if (state.useFinalPhaseRules) ...[
+          const SizedBox(height: 8.0),
+          Text("final_phase_rules_title".tr()),
+          const SizedBox(height: 8.0),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: viewModel.finalPointsPerSetController,
+                  keyboardType: TextInputType.number,
+                  decoration:
+                  InputDecoration(labelText: "points_per_set".tr()),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextFormField(
+                  controller: viewModel.finalSetsToWinController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(labelText: "sets_to_win".tr()),
+                ),
+              ),
+            ],
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text("win_by_two".tr()),
+            value: state.finalWinByTwo,
+            onChanged: (_) =>
+                viewModel.onIntent(const ToggleFinalWinByTwoIntent()),
+          ),
+        ],
+      ],
     );
   }
 

@@ -1,6 +1,8 @@
+import 'package:tournament_management/models/bracket_format.dart';
 import 'package:tournament_management/models/end_tournament.dart';
 import 'package:tournament_management/models/poule.dart';
 import 'package:tournament_management/models/tournament_date.dart';
+import 'package:tournament_management/models/tournament_rules.dart';
 import 'package:tournament_management/models/match.dart';
 
 
@@ -15,6 +17,9 @@ class Tournament {
   final List<Poule> pouleList;
   EndTournament finalMatchList;      // 1/4, 1/2, finale (mutable chez toi)
   bool isCancelled;                  // annulé par le créateur (mutable, comme finalMatchList)
+  final TournamentRules rules;       // règles de victoire (points/set, sets gagnants...)
+  final BracketFormat bracketFormat; // avec poules, ou tableau direct
+  final bool useRepechage;           // repêchage des meilleurs perdants du 1er tour (tableau direct uniquement)
 
   Tournament({
     required this.id,
@@ -27,11 +32,15 @@ class Tournament {
     required this.pouleList,
     required this.finalMatchList,
     this.isCancelled = false,
+    this.rules = TournamentRules.fallback,
+    this.bracketFormat = BracketFormat.poules,
+    this.useRepechage = false,
   });
 
   factory Tournament.fromJson(Map<String, dynamic> json) {
     final rawPoules = (json['pouleList'] ?? const []) as List?;
     final rawParticipants = (json['participants'] ?? const []) as List?;
+    final rawRules = json['rules'];
 
     return Tournament(
       id: (json['id'] ?? '') as String,
@@ -60,6 +69,13 @@ class Tournament {
       // tournoi dans Firebase, pas dans un objet imbriqué 'finalMatchList'.
       finalMatchList: EndTournament.fromJson(json),
       isCancelled: json['isCancelled'] == true,
+      // Tolérant à l'absence (tournois créés avant l'ajout de cette
+      // fonctionnalité) : repli sur des règles par défaut non strictes.
+      rules: rawRules is Map
+          ? TournamentRules.fromJson(Map<String, dynamic>.from(rawRules))
+          : TournamentRules.fallback,
+      bracketFormat: BracketFormatX.fromKey(json['bracketFormat'] as String?),
+      useRepechage: json['useRepechage'] == true,
     );
   }
 
@@ -73,6 +89,9 @@ class Tournament {
         'participants': participants,
         'pouleList': pouleList.map((p) => p.toJson()).toList(),
         'isCancelled': isCancelled,
+        'rules': rules.toJson(),
+        'bracketFormat': bracketFormat.key,
+        'useRepechage': useRepechage,
         // Les champs de finalMatchList sont écrits à plat, cohérent avec
         // ce que le reste de l'app écrit directement sur Firebase.
         ...finalMatchList.toJson(),
@@ -89,6 +108,9 @@ class Tournament {
     List<Poule>? pouleList,
     EndTournament? finalMatchList,
     bool? isCancelled,
+    TournamentRules? rules,
+    BracketFormat? bracketFormat,
+    bool? useRepechage,
   }) {
     return Tournament(
       id: id ?? this.id,
@@ -101,6 +123,9 @@ class Tournament {
       pouleList: pouleList ?? this.pouleList,
       finalMatchList: finalMatchList ?? this.finalMatchList,
       isCancelled: isCancelled ?? this.isCancelled,
+      rules: rules ?? this.rules,
+      bracketFormat: bracketFormat ?? this.bracketFormat,
+      useRepechage: useRepechage ?? this.useRepechage,
     );
   }
   

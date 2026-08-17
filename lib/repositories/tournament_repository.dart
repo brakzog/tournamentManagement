@@ -171,6 +171,25 @@ class TournamentRepository {
     }
   }
 
+  /// Remplace entièrement les tours du tableau direct (format sans
+  /// poules). Réécriture complète à chaque appel : plus simple et fiable
+  /// qu'un patch partiel vu que le nombre de tours change au fil du
+  /// tournoi.
+  Future<void> saveDirectBracketRounds(
+      String id, List<List<MatchTournament>> rounds) async {
+    try {
+      await tournamentRef(id).update({
+        "directBracketRounds": rounds
+            .map((round) => round.map((m) => m.toJson()).toList())
+            .toList(),
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        print("Erreur lors de l'enregistrement du tableau direct : $e");
+      }
+    }
+  }
+
   /// Met à jour un match de la phase finale à l'emplacement [matchRef] déjà
   /// résolu par l'appelant (finale/petite finale : objet unique ; quarts/
   /// demies : recherche dans la liste par paire de joueurs).
