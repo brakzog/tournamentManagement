@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -114,7 +115,9 @@ class _AdresseAutocompleteFieldState extends State<AdresseAutocompleteField> {
          });
          _removeOverlay();
          // Gérer l'erreur (ex: afficher un message)
-         print('Nominatim request failed with status: ${response.statusCode}');
+         if (kDebugMode) {
+           print('Nominatim request failed with status: ${response.statusCode}');
+         }
       }
     } catch (e) {
        if (!mounted) return;
@@ -123,7 +126,9 @@ class _AdresseAutocompleteFieldState extends State<AdresseAutocompleteField> {
          _suggestions = [];
        });
        _removeOverlay();
-       print('Error fetching suggestions: $e');
+       if (kDebugMode) {
+         print('Error fetching suggestions: $e');
+       }
        // Gérer l'exception (ex: problème réseau)
     }
   }

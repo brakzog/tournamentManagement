@@ -1,4 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -6,11 +7,33 @@ import 'package:tournament_management/pages/create_tournament/create_tournament.
 import 'package:tournament_management/pages/login/login.dart';
 import 'package:tournament_management/pages/participation/participation.dart';
 import 'package:tournament_management/pages/tournament/tournament.dart';
+import 'package:tournament_management/utils.dart';
 
 import 'home_viewmodel.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  bool _displayNameChecked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_displayNameChecked) return;
+      _displayNameChecked = true;
+
+      final displayName = FirebaseAuth.instance.currentUser?.displayName;
+      if (displayName == null || displayName.trim().isEmpty) {
+        showDisplayNameDialog(context, mandatory: true);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +49,11 @@ class HomePage extends StatelessWidget {
       appBar: AppBar(
         title: Text('tournament_management'.tr(), overflow: TextOverflow.ellipsis),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.badge_outlined),
+            tooltip: 'edit_display_name'.tr(),
+            onPressed: () => showDisplayNameDialog(context),
+          ),
           if (state.isLoggingOut)
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.0),

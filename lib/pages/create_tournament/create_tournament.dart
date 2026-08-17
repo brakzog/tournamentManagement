@@ -127,7 +127,7 @@ class _CreateTournamentPageState extends State<CreateTournamentPage> {
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-                    : const Text("Créer le tournoi"),
+                    : Text("create_tournament_submit".tr()),
               ),
             ],
           ),

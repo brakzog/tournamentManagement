@@ -5,11 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:tournament_management/graphView/GraphView.dart';
-import 'package:tournament_management/models/end_tournament.dart';
 import 'package:tournament_management/models/match.dart';
 import 'package:tournament_management/models/poule.dart';
 import 'package:tournament_management/models/tournament.dart';
-import 'package:tournament_management/models/tournament_phase.dart';
 import 'package:tournament_management/utils.dart';
 import 'package:tournament_management/widgets/tournament_node.dart';
 
@@ -93,6 +91,37 @@ class _DetailTournamentScreenState extends State<_DetailTournamentScreen>
       appBar: AppBar(
         title: const Text("detail_tournament").tr(),
         actions:[
+          if (_canShowCancelButton(state))
+            IconButton(
+              icon: const Icon(Icons.event_busy),
+              tooltip: 'cancel_tournament_action'.tr(),
+              onPressed: () async {
+                final t = state.tournament;
+                if (t == null) return;
+
+                final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: Text('cancel_tournament_title'.tr()),
+                    content: Text('cancel_tournament_confirm'.tr()),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: Text('cancel'.tr()),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        child: Text('cancel_tournament_confirm_button'.tr()),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (ok == true) {
+                  vm.onIntent(const DetailTournamentIntentCancelConfirmed());
+                }
+              },
+            ),
           if (_canShowDeleteButton(state))
             IconButton(
               icon: const Icon(Icons.delete),
@@ -137,6 +166,16 @@ class _DetailTournamentScreenState extends State<_DetailTournamentScreen>
       body: Column(
         children: [
           if (state.isLoading) const LinearProgressIndicator(),
+          if (state.tournament?.isCancelled == true)
+            Container(
+              width: double.infinity,
+              color: Colors.grey.withOpacity(0.2),
+              padding: const EdgeInsets.all(8),
+              child: Text(
+                'tournament_cancelled_banner'.tr(),
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
           if (state.errorMessage != null)
             Container(
               width: double.infinity,
@@ -187,11 +226,74 @@ bool _canShowDeleteButton(DetailTournamentState state) {
   return isCreator && finalMatchFinished != null && finalMatchFinished != "";
 }
 
+/// Le créateur peut annuler son tournoi tant qu'il n'est pas déjà terminé
+/// (finale jouée) ni déjà annulé. Mutuellement exclusif avec le bouton de
+/// suppression par construction (celui-ci exige au contraire une finale
+/// jouée).
+bool _canShowCancelButton(DetailTournamentState state) {
+  final tournament = state.tournament;
+  if (tournament == null) return false;
+  if (tournament.isCancelled) return false;
+
+  final currentUserEmail = FirebaseAuth.instance.currentUser?.email;
+  if (currentUserEmail == null) return false;
+
+  final isCreator = tournament.createdBy == currentUserEmail;
+  final notFinished = tournament.finalMatchList.finalMatch.score.isEmpty;
+
+  return isCreator && notFinished;
+}
+
+// ======================================================================
+//                          WIDGETS PARTAGÉS
+// ======================================================================
+
+/// Sélecteur de joueur générique, partagé entre les dialogues de poule et
+/// d'arbre (évite la duplication qui existait entre les deux onglets).
+Widget _buildPlayerDropdown(
+    List<String> playerList,
+    String selectedPlayer,
+    ValueChanged<String?> onChanged,
+    ) {
+  return DropdownButton<String>(
+    value: selectedPlayer,
+    hint: Text('player_selection'.tr()),
+    onChanged: onChanged,
+    items: playerList.map<DropdownMenuItem<String>>((String player) {
+      return DropdownMenuItem<String>(
+        value: player,
+        child: Text(player),
+      );
+    }).toList(),
+  );
+}
+
+/// Nœud rectangulaire de l'arbre : vert si le match est joué, bordure
+/// bleue s'il est cliquable (score encore vide).
+Widget _rectangleWidget(
+    String label, {
+      bool played = false,
+      bool playable = false,
+    }) {
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: played ? Colors.green.withOpacity(0.15) : null,
+      borderRadius: BorderRadius.circular(4),
+      border: playable ? Border.all(color: Colors.blue, width: 2) : null,
+      boxShadow: [
+        BoxShadow(color: Colors.blue[100]!, spreadRadius: 1),
+      ],
+    ),
+    child: Text(label),
+  );
+}
+
 // ======================================================================
 //                          ONGLET POULES
 // ======================================================================
 
-class _PoolPhaseTab extends StatefulWidget {
+class _PoolPhaseTab extends StatelessWidget {
   final TabController tabController;
 
   const _PoolPhaseTab({
@@ -199,19 +301,14 @@ class _PoolPhaseTab extends StatefulWidget {
   });
 
   @override
-  State<_PoolPhaseTab> createState() => _PoolPhaseTabState();
-}
-
-class _PoolPhaseTabState extends State<_PoolPhaseTab> {
-  String selectedPoule = "A";
-
-  @override
   Widget build(BuildContext context) {
     final vm = context.watch<DetailTournamentViewModel>();
     final tournament = vm.tournament;
+    final selectedPoule = vm.state.selectedPoule ?? "A";
 
     final bool isEmpty = tournament.pouleList.isEmpty;
-    final List<MatchTournament> matchList = getMatchListFromPoule(tournament);
+    final List<MatchTournament> matchList =
+        vm.getMatchListFromPoule(selectedPoule);
 
     final bool shouldDisplayStartButton = isEmpty;
     final bool shouldDisplayPouleSelector = !isEmpty;
@@ -225,13 +322,15 @@ class _PoolPhaseTabState extends State<_PoolPhaseTab> {
         children: [
           if (shouldDisplayStartButton) _buildStartTournamentButton(vm),
           if (shouldDisplayStartButton) _buildParticipantList(tournament),
-          if (shouldDisplayPouleSelector) buildPouleSelector(tournament),
-          if (shouldDisplayPouleSelector) _buildRankingSection(tournament),
+          if (shouldDisplayPouleSelector)
+            _buildPouleSelector(vm, tournament, selectedPoule),
+          if (shouldDisplayPouleSelector)
+            _buildRankingSection(tournament, selectedPoule),
           const SizedBox(height: 16.0),
           _buildMatchListSection(matchList),
           const SizedBox(height: 16.0),
           if (shouldDisplayMatchResultButton)
-            _buildMatchResultButton(context, tournament),
+            _buildMatchResultButton(context, vm, tournament, selectedPoule),
         ],
       ),
     );
@@ -243,9 +342,6 @@ class _PoolPhaseTabState extends State<_PoolPhaseTab> {
     return ElevatedButton(
       onPressed: () async {
         await vm.generatePoolsAndUpdateTournament();
-        setState(() {
-          // on force juste un rebuild, les données viennent déjà du ViewModel
-        });
       },
       child: Text("start_tournament".tr()),
     );
@@ -274,7 +370,11 @@ class _PoolPhaseTabState extends State<_PoolPhaseTab> {
 
   // --- Sélecteur de poule ---
 
-  Widget buildPouleSelector(Tournament tournament) {
+  Widget _buildPouleSelector(
+      DetailTournamentViewModel vm,
+      Tournament tournament,
+      String selectedPoule,
+      ) {
     List<Poule> sortedPoules = List.from(tournament.pouleList);
     sortedPoules.sort((a, b) => a.name.compareTo(b.name));
     return Row(
@@ -292,9 +392,7 @@ class _PoolPhaseTabState extends State<_PoolPhaseTab> {
           }).toList(),
           onChanged: (value) {
             if (value != null) {
-              setState(() {
-                selectedPoule = value;
-              });
+              vm.onIntent(SelectPouleIntent(value));
             }
           },
         ),
@@ -304,11 +402,11 @@ class _PoolPhaseTabState extends State<_PoolPhaseTab> {
 
   // --- Classement de la poule sélectionnée ---
 
-  Widget _buildRankingSection(Tournament tournament) {
-    final poule = tournament.pouleList
-        .where((element) => element.name == selectedPoule)
-        .first;
-    return _buildRanking(poule);
+  Widget _buildRankingSection(Tournament tournament, String selectedPoule) {
+    final matches =
+        tournament.pouleList.where((element) => element.name == selectedPoule);
+    if (matches.isEmpty) return const SizedBox.shrink();
+    return _buildRanking(matches.first);
   }
 
   Widget _buildRanking(Poule poule) {
@@ -325,60 +423,6 @@ class _PoolPhaseTabState extends State<_PoolPhaseTab> {
         ],
       ),
     );
-  }
-
-  List<String> calculateRanking(Poule poule) {
-    Map<String, int> victories = {};
-
-    for (MatchTournament match in poule.matchList) {
-      if (match.score.isEmpty) continue;
-
-      List<String> sets = match.score.split(';');
-
-      int victoriesPlayer1 = 0;
-      int victoriesPlayer2 = 0;
-
-      for (String set in sets) {
-        List<String> scores = set.split('-');
-        if (scores.length == 2) {
-          final s1 = int.tryParse(scores[0]) ?? 0;
-          final s2 = int.tryParse(scores[1]) ?? 0;
-
-          if (s1 > s2) {
-            victoriesPlayer1++;
-          } else if (s2 > s1) {
-            victoriesPlayer2++;
-          }
-        }
-      }
-
-      String winner = victoriesPlayer1 > victoriesPlayer2
-          ? match.player1
-          : victoriesPlayer2 > victoriesPlayer1
-          ? match.player2
-          : '';
-
-      victories[match.player1] =
-          (victories[match.player1] ?? 0) + (winner == match.player1 ? 1 : 0);
-      victories[match.player2] =
-          (victories[match.player2] ?? 0) + (winner == match.player2 ? 1 : 0);
-    }
-
-    final sortedEntries = victories.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    final ranking = sortedEntries
-        .asMap()
-        .map(
-          (index, entry) => MapEntry(
-        index + 1,
-        "${entry.key} - ${entry.value} victoires",
-      ),
-    )
-        .values
-        .toList();
-
-    return ranking;
   }
 
   // --- Liste des matchs de la poule sélectionnée ---
@@ -406,25 +450,23 @@ class _PoolPhaseTabState extends State<_PoolPhaseTab> {
     );
   }
 
-  List<MatchTournament> getMatchListFromPoule(Tournament tournament) {
-    final pouleList = tournament.pouleList;
-    if (pouleList.isEmpty) return [];
-    final poule =
-        pouleList.where((element) => element.name == selectedPoule).first;
-    return poule.matchList;
-  }
-
   // --- Bouton de saisie des scores de poule ---
 
   Widget _buildMatchResultButton(
-      BuildContext context, Tournament tournament) {
+      BuildContext context,
+      DetailTournamentViewModel vm,
+      Tournament tournament,
+      String selectedPoule,
+      ) {
     final tournamentRef = FirebaseDatabase.instance.ref().child("tournois");
     return ElevatedButton(
       child: Text("result_match_input".tr()),
-      onPressed: () => showMatchResultDialog(
+      onPressed: () => _showMatchResultDialog(
         context,
+        vm,
         tournament,
         tournamentRef,
+        selectedPoule,
         "",
         "",
       ),
@@ -433,15 +475,15 @@ class _PoolPhaseTabState extends State<_PoolPhaseTab> {
 
   // --- Dialog de saisie des scores de poule ---
 
-  void showMatchResultDialog(
+  void _showMatchResultDialog(
       BuildContext context,
+      DetailTournamentViewModel vm,
       Tournament tournament,
       DatabaseReference tournamentRef,
+      String selectedPoule,
       String player1,
       String player2,
       ) {
-    final vm = context.read<DetailTournamentViewModel>();
-
     Poule currentPoule = tournament.pouleList
         .firstWhere((element) => element.name == selectedPoule);
 
@@ -468,10 +510,12 @@ class _PoolPhaseTabState extends State<_PoolPhaseTab> {
                   if (value == null) return;
                   selectedPlayer1 = value;
                   Navigator.of(dialogContext).pop();
-                  showMatchResultDialog(
+                  _showMatchResultDialog(
                     context,
+                    vm,
                     tournament,
                     tournamentRef,
+                    selectedPoule,
                     value,
                     selectedPlayer2,
                   );
@@ -485,10 +529,12 @@ class _PoolPhaseTabState extends State<_PoolPhaseTab> {
                   if (value == null) return;
                   selectedPlayer2 = value;
                   Navigator.of(dialogContext).pop();
-                  showMatchResultDialog(
+                  _showMatchResultDialog(
                     context,
+                    vm,
                     tournament,
                     tournamentRef,
+                    selectedPoule,
                     selectedPlayer1,
                     value,
                   );
@@ -509,11 +555,39 @@ class _PoolPhaseTabState extends State<_PoolPhaseTab> {
                     .child('pouleList')
                     .child(selectedPoule);
 
-                bool matchExists = await checkMatchExists(
+                bool matchExists = await vm.checkMatchExists(
                   selectedPlayer1,
                   selectedPlayer2,
                   selectedPouleRef,
                 );
+
+                Future<void> submitScore() async {
+                  final time = DateTime.now();
+                  MatchTournament newMatch = MatchTournament(
+                    player1: selectedPlayer1,
+                    player2: selectedPlayer2,
+                    score: scoreController.text,
+                    date: "${time.day}/${time.month}/${time.year}",
+                    location: tournament.location,
+                  );
+
+                  final allPlayed = await vm.submitPouleMatchScore(
+                    selectedPoule,
+                    selectedPouleRef,
+                    newMatch,
+                  );
+
+                  if (allPlayed) {
+                    if (context.mounted) {
+                      await showInfoDialog(
+                          context, "all_match_poule_played".tr());
+                    }
+                    await vm.generateQuarterFinalsFromPoules();
+                    tabController.animateTo(1);
+                  }
+
+                  if (context.mounted) Navigator.of(dialogContext).pop();
+                }
 
                 if (matchExists) {
                   String message = tr(
@@ -523,41 +597,11 @@ class _PoolPhaseTabState extends State<_PoolPhaseTab> {
                   bool? result = await showAskDialog(context, message);
                   if (result == true &&
                       isValidScoreFormat(scoreController.text)) {
-                    final time = DateTime.now();
-                    MatchTournament newMatch = MatchTournament(
-                      player1: selectedPlayer1,
-                      player2: selectedPlayer2,
-                      score: scoreController.text,
-                      date: "${time.day}/${time.month}/${time.year}",
-                      location: tournament.location,
-                    );
-                    await updateScore(
-                      vm,
-                      selectedPouleRef,
-                      newMatch,
-                      context,
-                      tournament,
-                    );
-                    if (context.mounted) Navigator.of(dialogContext).pop();
+                    await submitScore();
                   }
                 } else {
                   if (isValidScoreFormat(scoreController.text)) {
-                    final time = DateTime.now();
-                    MatchTournament newMatch = MatchTournament(
-                      player1: selectedPlayer1,
-                      player2: selectedPlayer2,
-                      score: scoreController.text,
-                      date: "${time.day}/${time.month}/${time.year}",
-                      location: tournament.location,
-                    );
-                    await updateScore(
-                      vm,
-                      selectedPouleRef,
-                      newMatch,
-                      context,
-                      tournament,
-                    );
-                    if (context.mounted) Navigator.of(dialogContext).pop();
+                    await submitScore();
                   } else {
                     showErrorDialog(
                         context, 'score_format_incorrect'.tr());
@@ -570,215 +614,6 @@ class _PoolPhaseTabState extends State<_PoolPhaseTab> {
         );
       },
     );
-  }
-
-  bool isValidScoreFormat(String score) {
-    RegExp regex = RegExp(r'^\d+-\d+(;\d+-\d+)*$');
-    return regex.hasMatch(score);
-  }
-
-  Widget _buildPlayerDropdown(
-      List<String> playerList,
-      String selectedPlayer,
-      ValueChanged<String?> onChanged,
-      ) {
-    return DropdownButton<String>(
-      value: selectedPlayer,
-      hint: const Text('Sélectionnez un joueur'),
-      onChanged: onChanged,
-      items: playerList.map<DropdownMenuItem<String>>((String player) {
-        return DropdownMenuItem<String>(
-          value: player,
-          child: Text(player),
-        );
-      }).toList(),
-    );
-  }
-
-  Future<void> updateScore(
-      DetailTournamentViewModel vm,
-      DatabaseReference selectedPouleRef,
-      MatchTournament newMatch,
-      BuildContext context,
-      Tournament tournament,
-      ) async {
-    await vm.updateMatch(selectedPouleRef, newMatch);
-
-    setState(() {
-      tournament.updatePoule(
-        selectedPoule,
-        newMatch.player1,
-        newMatch.player2,
-        newMatch.score,
-      );
-    });
-
-    if (isAllMatchPlayed(tournament)) {
-      await showInfoDialog(context, "all_match_poule_played".tr());
-      updateGraph(vm, tournament);
-      widget.tabController.animateTo(1);
-    }
-  }
-
-  bool isAllMatchPlayed(Tournament tournament) {
-    for (var poule in tournament.pouleList) {
-      for (var match in poule.matchList) {
-        if (match.score.isEmpty) {
-          return false;
-        }
-      }
-    }
-    return true;
-  }
-
-  void updateGraph(DetailTournamentViewModel vm, Tournament tournament) {
-    Map<String, List<String>> pouleRankings = {};
-
-    for (var poule in tournament.pouleList) {
-      var wins = calculateWins(poule.matchList, poule.playerList);
-      pouleRankings[poule.name] = rankPlayers(wins);
-    }
-
-    tournament.finalMatchList.quarterFinalList =
-        createQuarterFinalBracket(vm, pouleRankings);
-
-    final tournamentRef =
-    FirebaseDatabase.instance.ref().child("tournois");
-    saveQuarterFinalsToFirebase(
-      tournamentRef,
-      tournament,
-      tournament.finalMatchList.quarterFinalList,
-    );
-
-    setState(() {});
-  }
-
-  Map<String, int> calculateWins(
-      List<MatchTournament> matches, List<String> players) {
-    Map<String, int> wins = Map.fromIterable(players, value: (_) => 0);
-
-    for (var match in matches) {
-      if (match.score.isEmpty) continue;
-
-      var scoreParts = match.score.split(';');
-      int player1Wins = 0;
-      int player2Wins = 0;
-
-      for (var score in scoreParts) {
-        var setScores = score.split('-');
-        if (setScores.length == 2) {
-          int player1Score = int.tryParse(setScores[0]) ?? 0;
-          int player2Score = int.tryParse(setScores[1]) ?? 0;
-
-          if (player1Score > player2Score) {
-            player1Wins++;
-          } else if (player2Score > player1Score) {
-            player2Wins++;
-          }
-        }
-      }
-
-      if (player1Wins > player2Wins) {
-        wins[match.player1] = (wins[match.player1] ?? 0) + 1;
-      } else if (player2Wins > player1Wins) {
-        wins[match.player2] = (wins[match.player2] ?? 0) + 1;
-      }
-    }
-
-    return wins;
-  }
-
-  List<String> rankPlayers(Map<String, int> wins) {
-    var sortedEntries = wins.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    return sortedEntries.map((e) => e.key).toList();
-  }
-
-  List<MatchTournament> createQuarterFinalBracket(
-      DetailTournamentViewModel vm,
-      Map<String, List<String>> pouleRankings,
-      ) {
-    return [
-      MatchTournament(
-        player1: pouleRankings['A']![0],
-        player2: pouleRankings['B']![1],
-        score: '',
-        date: vm.calculateDate("1/4"),
-        location: vm.tournament.location,
-      ),
-      MatchTournament(
-        player1: pouleRankings['C']![0],
-        player2: pouleRankings['D']![1],
-        score: '',
-        date: vm.calculateDate("1/4"),
-        location: vm.tournament.location,
-      ),
-      MatchTournament(
-        player1: pouleRankings['B']![0],
-        player2: pouleRankings['A']![1],
-        score: '',
-        date: vm.calculateDate("1/4"),
-        location: vm.tournament.location,
-      ),
-      MatchTournament(
-        player1: pouleRankings['D']![0],
-        player2: pouleRankings['C']![1],
-        score: '',
-        date: vm.calculateDate("1/4"),
-        location: vm.tournament.location,
-      ),
-    ];
-  }
-
-  Future<void> saveQuarterFinalsToFirebase(
-      DatabaseReference tournamentRef,
-      Tournament tournament,
-      List<MatchTournament> quarterFinals,
-      ) async {
-    try {
-      await tournamentRef.child(tournament.id).update({
-        "quartFinal": quarterFinals.map((match) => match.toJson()).toList(),
-      });
-    } catch (e) {
-      // ignore: avoid_print
-      print("Erreur lors de l'enregistrement des quarts de finale : $e");
-    }
-  }
-
-  Future<bool> checkMatchExists(
-      String player1,
-      String player2,
-      DatabaseReference databaseReference,
-      ) async {
-    try {
-      DataSnapshot snapshot =
-          (await databaseReference.child('matchs').once()).snapshot;
-      if (snapshot.value == null) return false;
-
-      List<Object?> matches = snapshot.value as List<Object?>;
-
-      for (var match in matches) {
-        if (match is! Map) continue;
-        Map currentMatch = match as Map<Object?, Object?>;
-
-        if (currentMatch["score"] == "") continue;
-
-        String matchKey1 =
-            '${currentMatch['player1']}-${currentMatch['player2']}';
-        String matchKey2 =
-            '${currentMatch['player2']}-${currentMatch['player1']}';
-        String keyToCheck = '$player1-$player2';
-
-        if (matchKey1 == keyToCheck || matchKey2 == keyToCheck) {
-          return true;
-        }
-      }
-      return false;
-    } catch (e) {
-      // ignore: avoid_print
-      print("Erreur lors de la vérification du match: $e");
-      return false;
-    }
   }
 }
 
@@ -810,21 +645,46 @@ class _BracketTabState extends State<_BracketTab> {
   Widget build(BuildContext context) {
     final vm = context.watch<DetailTournamentViewModel>();
     final tournament = vm.tournament;
-    final tournamentRef =
-    FirebaseDatabase.instance.ref().child("tournois");
+
+    if (!vm.isBracketReady) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Text(
+            "bracket_not_ready".tr(),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
 
     return Column(
       children: [
-        if(tournament.finalMatchList.finalMatch.score.isEmpty)
+        if (tournament.finalMatchList.finalMatch.score.isEmpty)
           ElevatedButton(
             child: Text("result_match_input".tr()),
-              onPressed: () => showMatchArbreDialog(
+              onPressed: () => _showMatchArbreDialog(
                 context,
+                vm,
                 tournament,
-                tournamentRef,
                 "",
                 "",
               ),
+          ),
+        if (tournament.finalMatchList.smallFinalMatch.player1.isNotEmpty &&
+            tournament.finalMatchList.smallFinalMatch.score.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: ElevatedButton(
+              child: Text("small_final_result_input".tr()),
+              onPressed: () => _showSmallFinalDialog(
+                context,
+                vm,
+                tournament,
+                "",
+                "",
+              ),
+            ),
           ),
         Expanded(
           child: InteractiveViewer(
@@ -834,9 +694,13 @@ class _BracketTabState extends State<_BracketTab> {
             maxScale: 5.6,
             child: Center(
               child: GraphView(
-                builder: (node) =>
-                    rectangleWidget((node as TournamentNode).label),
-                graph: createTournamentTree(tournament.finalMatchList),
+                builder: (node) => _buildTappableNode(
+                  context,
+                  vm,
+                  tournament,
+                  node as TournamentNode,
+                ),
+                graph: vm.createTournamentTree(),
                 algorithm: BuchheimWalkerAlgorithm(
                   builder,
                   TreeEdgeRenderer(builder),
@@ -849,23 +713,56 @@ class _BracketTabState extends State<_BracketTab> {
     );
   }
 
+  /// Rend un nœud de l'arbre. Si ce nœud représente un match dont le score
+  /// n'a pas encore été saisi, il devient cliquable et ouvre directement le
+  /// dialogue de saisie pré-rempli avec les deux joueurs de ce match.
+  Widget _buildTappableNode(
+      BuildContext context,
+      DetailTournamentViewModel vm,
+      Tournament tournament,
+      TournamentNode node,
+      ) {
+    final match = node.match;
+    final bool played = match != null && match.score.isNotEmpty;
+    final bool playable = match != null && match.score.isEmpty;
+
+    final Widget content = _rectangleWidget(
+      node.label,
+      played: played,
+      playable: playable,
+    );
+
+    if (!playable) {
+      return content;
+    }
+
+    return InkWell(
+      onTap: () => _showMatchArbreDialog(
+        context,
+        vm,
+        tournament,
+        match.player1,
+        match.player2,
+      ),
+      child: content,
+    );
+  }
+
   // --- Dialog de saisie des scores sur l'arbre ---
 
-  void showMatchArbreDialog(
+  void _showMatchArbreDialog(
       BuildContext context,
+      DetailTournamentViewModel vm,
       Tournament tournament,
-      DatabaseReference tournamentRef,
       String player1,
       String player2,
       ) {
-    final vm = context.read<DetailTournamentViewModel>();
-
     List<String> playerList = <String>[];
 
-    if (hasNotEmptyElements(tournament.finalMatchList.quarterFinalList)) {
-      playerList = getPlayerList(tournament.finalMatchList.quarterFinalList);
-    } else if (hasNotEmptyElements(tournament.finalMatchList.semiFinalist)) {
-      playerList = getPlayerList(tournament.finalMatchList.semiFinalist);
+    if (vm.hasNotEmptyElements(tournament.finalMatchList.quarterFinalList)) {
+      playerList = vm.getPlayerList(tournament.finalMatchList.quarterFinalList);
+    } else if (vm.hasNotEmptyElements(tournament.finalMatchList.semiFinalist)) {
+      playerList = vm.getPlayerList(tournament.finalMatchList.semiFinalist);
     } else if (tournament.finalMatchList.finalMatch.score.isEmpty) {
       playerList = [
         tournament.finalMatchList.finalMatch.player1,
@@ -877,7 +774,7 @@ class _BracketTabState extends State<_BracketTab> {
     player1.isNotEmpty ? player1 : playerList.first;
     String selectedPlayer2 = player2.isNotEmpty
         ? player2
-        : retrievePlayer(selectedPlayer1, tournament.finalMatchList);
+        : vm.retrievePlayer(selectedPlayer1);
 
     TextEditingController scoreController = TextEditingController();
 
@@ -896,13 +793,12 @@ class _BracketTabState extends State<_BracketTab> {
                     (value) {
                   if (value == null) return;
                   selectedPlayer1 = value;
-                  selectedPlayer2 =
-                      retrievePlayer(selectedPlayer1, tournament.finalMatchList);
+                  selectedPlayer2 = vm.retrievePlayer(selectedPlayer1);
                   Navigator.of(dialogContext).pop();
-                  showMatchArbreDialog(
+                  _showMatchArbreDialog(
                     context,
+                    vm,
                     tournament,
-                    tournamentRef,
                     selectedPlayer1,
                     selectedPlayer2,
                   );
@@ -915,13 +811,12 @@ class _BracketTabState extends State<_BracketTab> {
                     (value) {
                   if (value == null) return;
                   selectedPlayer2 = value;
-                  selectedPlayer1 =
-                      retrievePlayer(selectedPlayer2, tournament.finalMatchList);
+                  selectedPlayer1 = vm.retrievePlayer(selectedPlayer2);
                   Navigator.of(dialogContext).pop();
-                  showMatchArbreDialog(
+                  _showMatchArbreDialog(
                     context,
+                    vm,
                     tournament,
-                    tournamentRef,
                     selectedPlayer1,
                     selectedPlayer2,
                   );
@@ -946,14 +841,7 @@ class _BracketTabState extends State<_BracketTab> {
                     "${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}",
                     location: tournament.location,
                   );
-                  DatabaseReference endTournamentRef =
-                  getTournamentRef(tournament, newMatch);
-                  await updateScoreGraph(
-                    vm,
-                    endTournamentRef,
-                    newMatch,
-                    tournament,
-                  );
+                  await vm.submitBracketMatchScore(newMatch);
                   if (context.mounted) Navigator.of(dialogContext).pop();
                 } else {
                   showErrorDialog(context, 'score_format_incorrect'.tr());
@@ -967,220 +855,99 @@ class _BracketTabState extends State<_BracketTab> {
     );
   }
 
-  Future<void> updateScoreGraph(
+  // --- Dialog de saisie du score de la petite finale (3e place) ---
+  //
+  // Contrairement à _showMatchArbreDialog, les deux joueurs sont toujours
+  // connus dès la génération (perdants des demies) : pas de cascade à faire
+  // entre plusieurs listes de matchs, juste un swap possible via dropdown.
+  void _showSmallFinalDialog(
+      BuildContext context,
       DetailTournamentViewModel vm,
-      DatabaseReference endTournamentRef,
-      MatchTournament newMatch,
       Tournament tournament,
-      ) async {
-    await vm.updateMatchGraph(endTournamentRef, newMatch);
-
-    setState(() {
-      tournament.updateFinaleMatch(newMatch);
-    });
-  }
-
-  // --- Helpers arbre ---
-
-  bool isValidScoreFormat(String score) {
-    RegExp regex = RegExp(r'^\d+-\d+(;\d+-\d+)*$');
-    return regex.hasMatch(score);
-  }
-
-  Widget _buildPlayerDropdown(
-      List<String> playerList,
-      String selectedPlayer,
-      ValueChanged<String?> onChanged,
+      String player1,
+      String player2,
       ) {
-    return DropdownButton<String>(
-      value: selectedPlayer,
-      hint: const Text('Sélectionnez un joueur'),
-      onChanged: onChanged,
-      items: playerList.map<DropdownMenuItem<String>>((String player) {
-        return DropdownMenuItem<String>(
-          value: player,
-          child: Text(player),
+    final smallFinal = tournament.finalMatchList.smallFinalMatch;
+
+    final List<String> playerList = [smallFinal.player1, smallFinal.player2];
+
+    String selectedPlayer1 = player1.isNotEmpty ? player1 : playerList.first;
+    String selectedPlayer2 = player2.isNotEmpty ? player2 : playerList.last;
+
+    TextEditingController scoreController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text('small_final_result_input'.tr()),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildPlayerDropdown(
+                playerList,
+                selectedPlayer1,
+                    (value) {
+                  if (value == null) return;
+                  selectedPlayer1 = value;
+                  Navigator.of(dialogContext).pop();
+                  _showSmallFinalDialog(
+                    context,
+                    vm,
+                    tournament,
+                    value,
+                    selectedPlayer2,
+                  );
+                },
+              ),
+              const SizedBox(height: 10),
+              _buildPlayerDropdown(
+                playerList,
+                selectedPlayer2,
+                    (value) {
+                  if (value == null) return;
+                  selectedPlayer2 = value;
+                  Navigator.of(dialogContext).pop();
+                  _showSmallFinalDialog(
+                    context,
+                    vm,
+                    tournament,
+                    selectedPlayer1,
+                    value,
+                  );
+                },
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: scoreController,
+                decoration: InputDecoration(labelText: 'score_input'.tr()),
+              ),
+            ],
+          ),
+          actions: [
+            InkWell(
+              onTap: () async {
+                if (isValidScoreFormat(scoreController.text)) {
+                  final time = DateTime.now();
+                  MatchTournament newMatch = MatchTournament(
+                    player1: selectedPlayer1,
+                    player2: selectedPlayer2,
+                    score: scoreController.text,
+                    date: "${time.day}/${time.month}/${time.year}",
+                    location: tournament.location,
+                  );
+                  await vm.submitBracketMatchScore(newMatch);
+                  if (context.mounted) Navigator.of(dialogContext).pop();
+                } else {
+                  showErrorDialog(context, 'score_format_incorrect'.tr());
+                }
+              },
+              child: Text('valid'.tr()),
+            ),
+          ],
         );
-      }).toList(),
+      },
     );
-  }
-
-  List<String> getPlayerList(List<MatchTournament> listMatch) {
-    List<String> playerList = [];
-    for (MatchTournament match in listMatch) {
-      playerList.add(match.player1);
-      playerList.add(match.player2);
-    }
-    return playerList;
-  }
-
-  bool hasNotEmptyElements(List<MatchTournament> list) {
-    for (MatchTournament currentMatch in list) {
-      if (currentMatch.score.isEmpty) return true;
-    }
-    return false;
-  }
-
-  DatabaseReference getTournamentRef(
-      Tournament tournament,
-      MatchTournament match,
-      ) {
-    final tournamentRef = FirebaseDatabase.instance
-        .ref()
-        .child("tournois")
-        .child(tournament.id);
-    final end = tournament.finalMatchList;
-
-    final quarterIndex = tournament.getIndex(end.quarterFinalList, match);
-    if (quarterIndex != -1) {
-      return tournamentRef.child("quartFinal").child(quarterIndex.toString());
-    }
-
-    final semiIndex = tournament.getIndex(end.semiFinalist, match);
-    if (semiIndex != -1) {
-      return tournamentRef.child("semiFinal").child(semiIndex.toString());
-    }
-
-    // Sinon on considère que c'est la finale
-    return tournamentRef.child('finalMatch');
-  }
-
-  String retrievePlayer(String selectedPlayer, EndTournament tournament) {
-    String player = "";
-    if (hasNotEmptyElements(tournament.quarterFinalList)) {
-      for (MatchTournament match in tournament.quarterFinalList) {
-        if (match.player1 == selectedPlayer) {
-          player = match.player2;
-          continue;
-        } else if (match.player2 == selectedPlayer) {
-          player = match.player1;
-          continue;
-        }
-      }
-    } else if (hasNotEmptyElements(tournament.semiFinalist)) {
-      for (MatchTournament match in tournament.semiFinalist) {
-        if (match.player1 == selectedPlayer) {
-          player = match.player2;
-          continue;
-        } else if (match.player2 == selectedPlayer) {
-          player = match.player1;
-          continue;
-        }
-      }
-    } else if (tournament.finalMatch.player1 == selectedPlayer) {
-      player = tournament.finalMatch.player2;
-    } else {
-      player = tournament.finalMatch.player1;
-    }
-    return player;
-  }
-
-  // --- GraphView ---
-
-  Widget rectangleWidget(String label) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(4),
-        boxShadow: [
-          BoxShadow(color: Colors.blue[100]!, spreadRadius: 1),
-        ],
-      ),
-      child: Text(label),
-    );
-  }
-
-  Graph createTournamentTree(EndTournament endTournament) {
-    final Graph graph = Graph()..isTree = true;
-
-    final TournamentNode winnerNode =
-    TournamentNode(0, "Winner: ${getWinner(endTournament.finalMatch)}");
-
-    final TournamentNode finalPlayer1Node =
-    TournamentNode(1, endTournament.finalMatch.player1);
-
-    final TournamentNode finalPlayer2Node =
-    TournamentNode(2, endTournament.finalMatch.player2);
-
-    final TournamentNode semiPlayer1Node =
-    getTournamentNode(3, endTournament, 0, TournamentPhase.SEMI_FINAL, true);
-    final TournamentNode semiPlayer2Node =
-    getTournamentNode(4, endTournament, 0, TournamentPhase.SEMI_FINAL, false);
-    final TournamentNode semiPlayer3Node =
-    getTournamentNode(5, endTournament, 1, TournamentPhase.SEMI_FINAL, true);
-    final TournamentNode semiPlayer4Node =
-    getTournamentNode(6, endTournament, 1, TournamentPhase.SEMI_FINAL, false);
-
-    final TournamentNode quarterPlayer1Node =
-    getTournamentNode(7, endTournament, 0, TournamentPhase.QUARTER_FINAL, true);
-    final TournamentNode quarterPlayer2Node =
-    getTournamentNode(8, endTournament, 0, TournamentPhase.QUARTER_FINAL, false);
-    final TournamentNode quarterPlayer3Node =
-    getTournamentNode(9, endTournament, 1, TournamentPhase.QUARTER_FINAL, true);
-    final TournamentNode quarterPlayer4Node =
-    getTournamentNode(10, endTournament, 1, TournamentPhase.QUARTER_FINAL, false);
-    final TournamentNode quarterPlayer5Node =
-    getTournamentNode(11, endTournament, 2, TournamentPhase.QUARTER_FINAL, true);
-    final TournamentNode quarterPlayer6Node =
-    getTournamentNode(12, endTournament, 2, TournamentPhase.QUARTER_FINAL, false);
-    final TournamentNode quarterPlayer7Node =
-    getTournamentNode(13, endTournament, 3, TournamentPhase.QUARTER_FINAL, true);
-    final TournamentNode quarterPlayer8Node =
-    getTournamentNode(14, endTournament, 3, TournamentPhase.QUARTER_FINAL, false);
-
-    graph.addEdge(winnerNode, finalPlayer1Node);
-    graph.addEdge(winnerNode, finalPlayer2Node);
-
-    graph.addEdge(finalPlayer1Node, semiPlayer1Node);
-    graph.addEdge(finalPlayer1Node, semiPlayer2Node);
-    graph.addEdge(finalPlayer2Node, semiPlayer3Node);
-    graph.addEdge(finalPlayer2Node, semiPlayer4Node);
-
-    graph.addEdge(semiPlayer1Node, quarterPlayer1Node);
-    graph.addEdge(semiPlayer1Node, quarterPlayer2Node);
-    graph.addEdge(semiPlayer2Node, quarterPlayer3Node);
-    graph.addEdge(semiPlayer2Node, quarterPlayer4Node);
-    graph.addEdge(semiPlayer3Node, quarterPlayer5Node);
-    graph.addEdge(semiPlayer3Node, quarterPlayer6Node);
-    graph.addEdge(semiPlayer4Node, quarterPlayer7Node);
-    graph.addEdge(semiPlayer4Node, quarterPlayer8Node);
-
-    return graph;
-  }
-
-  TournamentNode getTournamentNode(
-      int id,
-      EndTournament endTournament,
-      int index,
-      TournamentPhase phase,
-      bool player1,
-      ) {
-    switch (phase) {
-      case TournamentPhase.FINAL:
-        return _buildNodeFromMatch(endTournament.finalMatch, id, player1);
-      case TournamentPhase.SMALL_FINAL:
-        return _buildNodeFromMatch(endTournament.smallFinalMatch, id, player1);
-      case TournamentPhase.SEMI_FINAL:
-        if (index >= 0 && index < endTournament.semiFinalist.length) {
-          final m = endTournament.semiFinalist[index];
-          return _buildNodeFromMatch(m, id, player1);
-        }
-        throw RangeError('index demi-finale hors bornes: $index');
-      case TournamentPhase.QUARTER_FINAL:
-        if (index >= 0 && index < endTournament.quarterFinalList.length) {
-          final m = endTournament.quarterFinalList[index];
-          return _buildNodeFromMatch(m, id, player1);
-        }
-        throw RangeError('index quart de finale hors bornes: $index');
-      case TournamentPhase.GROUP:
-        throw StateError(
-            'La phase GROUP n\'a pas de TournamentNode dans EndTournament');
-    }
-  }
-
-  TournamentNode _buildNodeFromMatch(
-      MatchTournament m, int id, bool isPlayer1) {
-    final name = isPlayer1 ? m.player1 : m.player2;
-    return TournamentNode(id, name);
   }
 }

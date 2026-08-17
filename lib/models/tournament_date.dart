@@ -1,7 +1,7 @@
 class TournamentDate {
-  /// Dates au format ISO "yyyy-MM-dd" ou "dd/MM/yyyy" selon ton UI actuelle.
-  /// Si tu pr?f?res, remplace par des DateTime et formate ? l?affichage.
-  final String start; // d?but du tournoi
+  /// Dates au format "dd/MM/yyyy" (format utilise par le reste de l'app,
+  /// voir create_tournament_viewmodel.dart).
+  final String start; // debut du tournoi
   final String? end;  // fin (optionnel)
   final String? registrationDeadline; // date limite d'inscription (optionnel)
 
@@ -11,15 +11,20 @@ class TournamentDate {
     this.registrationDeadline,
   });
 
+  /// Lit les cles reellement ecrites dans Firebase par
+  /// create_tournament_viewmodel.dart : 'beginingDate' / 'endDate'
+  /// (conserve la coquille "begining" pour rester compatible avec les
+  /// donnees existantes). Les cles 'start'/'end' restent acceptees en
+  /// repli au cas ou une autre source les utiliserait.
   factory TournamentDate.fromJson(Map<String, dynamic> json) => TournamentDate(
-        start: (json['start'] ?? '') as String,
-        end: json['end'] as String?,
+        start: (json['beginingDate'] ?? json['start'] ?? '') as String,
+        end: (json['endDate'] ?? json['end']) as String?,
         registrationDeadline: json['registrationDeadline'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
-        'start': start,
-        if (end != null) 'end': end,
+        'beginingDate': start,
+        if (end != null) 'endDate': end,
         if (registrationDeadline != null)
           'registrationDeadline': registrationDeadline,
       };

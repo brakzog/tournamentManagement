@@ -1,4 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:tournament_management/models/match.dart';
 import 'package:tournament_management/models/poule.dart';
@@ -32,6 +33,24 @@ String getWinner(MatchTournament match) {
   } else {
     return match.player2;
   }
+}
+
+/// Symétrique de [getWinner] : renvoie le joueur perdant du match.
+/// Utile pour qualifier les demi-finalistes battus vers la petite finale.
+String getLoser(MatchTournament match) {
+  if (match.score == "") {
+    return "";
+  }
+
+  final winner = getWinner(match);
+  return winner == match.player1 ? match.player2 : match.player1;
+}
+
+/// Vérifie que le score respecte le format "Xi-Yi;Xi+1-Yi+1;..." attendu
+/// partout dans l'app pour un score de match.
+bool isValidScoreFormat(String score) {
+  final RegExp regex = RegExp(r'^\d+-\d+(;\d+-\d+)*$');
+  return regex.hasMatch(score);
 }
 
 List<String> calculateRanking(Poule poule) {
@@ -104,7 +123,7 @@ List<String> calculateRanking(Poule poule) {
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: const Text('OK'),
+              child: Text('Ok'.tr()),
             ),
           ],
         );
@@ -174,11 +193,70 @@ Future<bool?> showAskDialog(BuildContext context, String message) async {
                 Navigator.of(context)
                     .pop(); // Ferme la page de creation du tournoi
               },
-              child: const Text("OK"),
+              child: Text('Ok'.tr()),
             ),
           ],
         );
       },
     );
   }
+
+/// Dialogue de saisie du nom d'affichage de l'utilisateur, utilisé pour
+/// relier son compte aux matchs où il apparaît (les participants d'un
+/// tournoi étant des noms libres tapés par le créateur, pas des emails).
+///
+/// [mandatory] empêche la fermeture par tap en dehors du dialogue (le
+/// bouton retour Android peut toutefois toujours le fermer ; c'est un
+/// compromis volontaire pour ne pas dépendre d'API de pop récentes).
+Future<void> showDisplayNameDialog(
+  BuildContext context, {
+  bool mandatory = false,
+}) async {
+  final user = FirebaseAuth.instance.currentUser;
+  final controller = TextEditingController(text: user?.displayName ?? '');
+
+  final result = await showDialog<String>(
+    context: context,
+    barrierDismissible: !mandatory,
+    builder: (BuildContext dialogContext) {
+      return AlertDialog(
+        title: Text('display_name_title'.tr()),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('display_name_explanation'.tr()),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              textCapitalization: TextCapitalization.words,
+              decoration: InputDecoration(labelText: 'display_name_label'.tr()),
+            ),
+          ],
+        ),
+        actions: [
+          if (!mandatory)
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text('cancel'.tr()),
+            ),
+          ElevatedButton(
+            onPressed: () {
+              final value = controller.text.trim();
+              if (value.isEmpty) return;
+              Navigator.of(dialogContext).pop(value);
+            },
+            child: Text('valid'.tr()),
+          ),
+        ],
+      );
+    },
+  );
+
+  if (result != null && result.isNotEmpty && user != null) {
+    await user.updateDisplayName(result);
+    await user.reload();
+  }
+}
 

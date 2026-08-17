@@ -22,13 +22,17 @@ class Poule {
 
     return Poule(
       name: (json['name'] ?? '') as String,
-      playerList: rawPlayers?.map((e) => e.toString()).toList() ?? const <String>[],
+      // .toList() renvoie toujours une liste "growable", même si la source
+      // était const : ces valeurs de repli ne sont donc en pratique jamais
+      // atteintes, mais on les garde non-const pour ne pas induire en
+      // erreur un lecteur qui penserait matchList/playerList immuables.
+      playerList: rawPlayers?.map((e) => e.toString()).toList() ?? <String>[],
       matchList: rawMatches
               ?.map((e) => e is Map<String, dynamic>
                   ? MatchTournament.fromJson(e)
                   : MatchTournament.fromJson(Map<String, dynamic>.from(e as Map)))
               .toList() ??
-          const <MatchTournament>[],
+          <MatchTournament>[],
     );
   }
 

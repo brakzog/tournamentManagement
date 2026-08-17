@@ -1,8 +1,8 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:tournament_management/repositories/tournament_repository.dart';
 import 'package:tournament_management/utils.dart';
 
 /// --- STATE --- ///
@@ -70,8 +70,13 @@ class CreateTournamentViewModel extends ChangeNotifier {
   final TextEditingController locationController = TextEditingController();
   final TextEditingController eventTypeController = TextEditingController();
 
+  final TournamentRepository _repository;
+
   CreateTournamentState _state = const CreateTournamentState();
   CreateTournamentState get state => _state;
+
+  CreateTournamentViewModel({TournamentRepository? repository})
+      : _repository = repository ?? TournamentRepository();
 
   void _setState(CreateTournamentState newState) {
     _state = newState;
@@ -187,11 +192,7 @@ class CreateTournamentViewModel extends ChangeNotifier {
     );
 
     try {
-      final dbRef = FirebaseDatabase.instance.ref().child('tournois').push();
-      final id = dbRef.key!;
-
-      await dbRef.set({
-        'id': id,
+      await _repository.createTournament({
         'name': tournamentName,
         'createdBy': createdBy,
         'sportEvent': eventType,

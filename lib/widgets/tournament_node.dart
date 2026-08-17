@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 
 import '../graphView/GraphView.dart';
+import '../models/match.dart';
 
 class TournamentNode extends Node {
   final String label;
 
-  TournamentNode(int super.id, this.label) : super.Id();
+  /// Le match auquel appartient ce joueur, si applicable.
+  /// Null pour un nœud purement informatif (ex: le nœud "Winner" en tête
+  /// d'arbre), qui ne représente pas un match jouable.
+  final MatchTournament? match;
+
+  TournamentNode(int super.id, this.label, {this.match}) : super.Id();
 
   static Widget builder(BuildContext context, Node node, Map<int, Node> graph) {
     return Builder(

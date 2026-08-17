@@ -1,7 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
+import 'package:tournament_management/models/match.dart';
 import 'package:tournament_management/models/participation_model.dart';
+import 'package:tournament_management/models/tournament.dart';
+import 'package:tournament_management/repositories/tournament_repository.dart';
 
 /// --- STATE --- ///
 class ParticipationState {
@@ -52,8 +55,13 @@ class LoadParticipationIntent extends ParticipationIntent {
 
 /// --- VIEWMODEL --- ///
 class ParticipationViewModel extends ChangeNotifier {
+  final TournamentRepository _repository;
+
   ParticipationState _state = const ParticipationState();
   ParticipationState get state => _state;
+
+  ParticipationViewModel({TournamentRepository? repository})
+      : _repository = repository ?? TournamentRepository();
 
   void _setState(ParticipationState newState) {
     _state = newState;
@@ -114,8 +122,7 @@ class ParticipationViewModel extends ChangeNotifier {
   // --- TON ANCIEN CODE LOGIQUE, inchangé ---
 
   Future<List<ParticipationModel>> fetchCalendarFromFirebase(bool played) async {
-    final ref = FirebaseDatabase.instance.ref();
-    final snapshot = await ref.child('tournois').get();
+    final snapshot = await _repository.fetchAllSnapshot();
     if (snapshot.exists) {
       return buildListParticipation(snapshot, played);
     } else {
@@ -126,6 +133,11 @@ class ParticipationViewModel extends ChangeNotifier {
     }
   }
 
+  /// Normalise un nom pour comparaison tolérante (espaces superflus, casse).
+  /// Les participants sont des noms libres tapés par le créateur du
+  /// tournoi : une comparaison stricte serait trop fragile.
+  String _normalizeName(String s) => s.trim().toLowerCase();
+
   List<ParticipationModel> buildListParticipation(
       DataSnapshot snapshot, bool played) {
     List<ParticipationModel> returnList = [];
@@ -133,42 +145,89 @@ class ParticipationViewModel extends ChangeNotifier {
     final Map<Object?, Object?> map =
     snapshot.value as Map<Object?, Object?>;
 
-    final userEmail = FirebaseAuth.instance.currentUser?.email;
+    // Le matching se fait sur le nom d'affichage choisi par l'utilisateur :
+    // les participants sont des noms libres tapés par le créateur du
+    // tournoi, pas des emails.
+    final currentUserName = FirebaseAuth.instance.currentUser?.displayName ?? '';
+    if (currentUserName.isEmpty) return returnList;
 
     map.forEach((key, value) {
-      final mapValue = value as Map<Object?, Object?>;
+      if (value is! Map) return;
+      final mapValue = value;
 
-      final location = mapValue['location'] as String?;
-      final participants = mapValue['participants'] as List<Object?>;
+      final participantsRaw = mapValue['participants'];
+      final participants = (participantsRaw is List) ? participantsRaw : const [];
 
-      if (participants.contains(userEmail)) {
-        // on récupère les matchs pertinents pour ce tournoi
-        returnList.addAll(
-          getMatches(mapValue, userEmail ?? '', played).map(
-                (m) => ParticipationModel(
-              location: location ?? '',
-              date: m.date,
-              opposant: m.opposant,
-              score: m.score,
-            ),
-          ),
+      final bool isParticipant = participants.any(
+        (p) => _normalizeName(p.toString()) == _normalizeName(currentUserName),
+      );
+      if (!isParticipant) return;
+
+      // On réutilise le parsing tolérant de Tournament.fromJson (gère déjà
+      // les variantes de clés 'matchList'/'matchs'/'matches' pour les
+      // matchs de poule) plutôt que de dupliquer un parsing manuel fragile.
+      final Tournament tournament;
+      try {
+        tournament = Tournament.fromJson(
+          Map<String, dynamic>.from(mapValue)..['id'] = key.toString(),
         );
+      } catch (e) {
+        if (kDebugMode) {
+          print('Tournoi $key ignoré (parsing impossible) : $e');
+        }
+        return;
       }
+
+      returnList.addAll(getMatches(tournament, currentUserName, played));
     });
 
     return returnList;
   }
 
   List<ParticipationModel> getMatches(
-      Map<Object?, Object?> tournamentData, String userEmail, bool played) {
-    // Ton implémentation actuelle ici (copiée depuis ton fichier d’origine)
-    // Je laisse intacte ta logique interne, on ne touche pas aux détails
-    // de filtre par phase / score / etc.
+      Tournament tournament, String currentUserName, bool played) {
+    final List<ParticipationModel> matches = [];
+    final normalizedUserName = _normalizeName(currentUserName);
 
-    List<ParticipationModel> matches = [];
+    void addIfInvolved(MatchTournament m) {
+      // Match pas encore alimenté (phase finale pas encore générée) : ignoré.
+      if (m.player1.isEmpty || m.player2.isEmpty) return;
 
-    // ... ici tu gardes le contenu exact que tu avais déjà ...
-    // (parcours des poules + phases finales et création de ParticipationModel)
+      final bool isPlayed = m.score.isNotEmpty;
+      if (isPlayed != played) return;
+
+      final bool isPlayer1 = _normalizeName(m.player1) == normalizedUserName;
+      final bool isPlayer2 = _normalizeName(m.player2) == normalizedUserName;
+
+      if (isPlayer1 || isPlayer2) {
+        final opponent = isPlayer1 ? m.player2 : m.player1;
+        matches.add(
+          ParticipationModel(
+            date: m.date,
+            location: m.location.isNotEmpty ? m.location : tournament.location,
+            opposant: opponent,
+            score: m.score,
+          ),
+        );
+      }
+    }
+
+    // Phase de poules
+    for (final poule in tournament.pouleList) {
+      for (final m in poule.matchList) {
+        addIfInvolved(m);
+      }
+    }
+
+    // Phases finales
+    for (final m in tournament.finalMatchList.quarterFinalList) {
+      addIfInvolved(m);
+    }
+    for (final m in tournament.finalMatchList.semiFinalist) {
+      addIfInvolved(m);
+    }
+    addIfInvolved(tournament.finalMatchList.finalMatch);
+    addIfInvolved(tournament.finalMatchList.smallFinalMatch);
 
     return matches;
   }
