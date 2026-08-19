@@ -5,6 +5,35 @@ import 'package:tournament_management/models/match.dart';
 import 'package:tournament_management/models/match_rules.dart';
 import 'package:tournament_management/models/poule.dart';
 
+/// Construit un exemple de score valide respectant [rules] (un set
+/// minimal gagnant, répété [MatchRules.setsToWin] fois), utilisé comme
+/// indice de saisie dans les champs de score.
+String scoreExampleFor(MatchRules rules) {
+  final int winnerScore =
+  rules.winByTwo ? (rules.pointsPerSet < 2 ? 2 : rules.pointsPerSet) : rules.pointsPerSet;
+  final int loserScore =
+  rules.winByTwo ? winnerScore - 2 : (winnerScore - 1).clamp(0, winnerScore);
+
+  final String oneSet = "$winnerScore-$loserScore";
+  return List.generate(rules.setsToWin, (_) => oneSet).join(';');
+}
+
+/// Texte d'aide affiché sous le champ de score, combinant un exemple
+/// concret et un rappel des règles configurées pour le tournoi (points par
+/// set, écart de 2 le cas échéant, nombre de sets gagnants).
+String scoreHintFor(MatchRules rules) {
+  final String example = scoreExampleFor(rules);
+  final String winByTwoFragment =
+  rules.winByTwo ? ', ${'score_hint_win_by_two_fragment'.tr()}' : '';
+
+  return 'score_hint'.tr(args: [
+    example,
+    rules.pointsPerSet.toString(),
+    winByTwoFragment,
+    rules.setsToWin.toString(),
+  ]);
+}
+
 /// Calcule la taille de tableau (puissance de 2) immédiatement supérieure
 /// ou égale à [n]. Ex: 13 -> 16, 8 -> 8, 5 -> 8.
 int nextPowerOfTwo(int n) {

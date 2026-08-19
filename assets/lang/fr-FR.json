@@ -60,6 +60,8 @@
   "player2_selection": "Sélectionnez le joueur 2",
   "player_selection": "Sélectionnez un joueur",
   "score_input": "Saisissez le score",
+  "score_hint": "Ex : {} ({} pts/set{}, {} set(s) gagnant(s))",
+  "score_hint_win_by_two_fragment": "écart de 2",
   "matchAlreadyPlayed": "Le match entre {} et {} a déjà été joué.",
   "participants_list": "Liste des participants",
   "poule_choice": "Choix de la poule",

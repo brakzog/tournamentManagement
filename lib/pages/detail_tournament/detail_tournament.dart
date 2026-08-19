@@ -422,7 +422,12 @@ class _DirectBracketTab extends StatelessWidget {
               const SizedBox(height: 10),
               TextField(
                 controller: scoreController,
-                decoration: InputDecoration(labelText: 'score_input'.tr()),
+                decoration: InputDecoration(
+                  labelText: 'score_input'.tr(),
+                  hintText: scoreHintFor(
+                    tournament.rules.rulesFor(vm.phaseForDirectBracketMatch(match)),
+                  ),
+                ),
               ),
             ],
           ),
@@ -708,7 +713,12 @@ class _PoolPhaseTab extends StatelessWidget {
               const SizedBox(height: 10),
               TextField(
                 controller: scoreController,
-                decoration: InputDecoration(labelText: 'score_input'.tr()),
+                decoration: InputDecoration(
+                  labelText: 'score_input'.tr(),
+                  hintText: scoreHintFor(
+                    tournament.rules.rulesFor(TournamentPhase.GROUP),
+                  ),
+                ),
               ),
             ],
           ),
@@ -1000,7 +1010,20 @@ class _BracketTabState extends State<_BracketTab> {
               const SizedBox(height: 10),
               TextField(
                 controller: scoreController,
-                decoration: InputDecoration(labelText: 'score_input'.tr()),
+                decoration: InputDecoration(
+                  labelText: 'score_input'.tr(),
+                  hintText: scoreHintFor(
+                    tournament.rules.rulesFor(
+                      vm.phaseFor(MatchTournament(
+                        player1: selectedPlayer1,
+                        player2: selectedPlayer2,
+                        score: '',
+                        date: '',
+                        location: tournament.location,
+                      )),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -1108,7 +1131,12 @@ class _BracketTabState extends State<_BracketTab> {
               const SizedBox(height: 10),
               TextField(
                 controller: scoreController,
-                decoration: InputDecoration(labelText: 'score_input'.tr()),
+                decoration: InputDecoration(
+                  labelText: 'score_input'.tr(),
+                  hintText: scoreHintFor(
+                    tournament.rules.rulesFor(TournamentPhase.SMALL_FINAL),
+                  ),
+                ),
               ),
             ],
           ),
