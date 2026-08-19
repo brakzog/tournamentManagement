@@ -88,9 +88,19 @@ class HomeViewModel extends ChangeNotifier {
     );
 
     try {
-      // Nettoyage des infos utilisateur, comme avant
-      await _storage.delete(key: 'userId');
-      await _storage.delete(key: 'googleUserId'); // bonus : ce qu’on a stocké au login
+      // Nettoyage des infos utilisateur, non-bloquant : un échec Keychain
+      // ici ne doit pas empêcher la vraie déconnexion (Google/Firebase)
+      // de s'exécuter.
+      try {
+        await _storage.delete(key: 'userId');
+        await _storage.delete(key: 'googleUserId'); // bonus : ce qu'on a stocké au login
+      } catch (e, st) {
+        if (kDebugMode) {
+          print('Nettoyage Keychain échoué, ignoré : $e');
+          print(st);
+        }
+      }
+
       try { await _googleSignIn.signOut(); } catch (_) {}
       try { await _googleSignIn.disconnect(); } catch (_) {}
       await _auth.signOut();

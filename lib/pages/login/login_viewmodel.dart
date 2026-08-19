@@ -129,8 +129,18 @@ class LoginViewModel extends ChangeNotifier {
       final user = FirebaseAuth.instance.currentUser;
       debugPrint('[GOOGLE] Firebase user=${user?.uid}');
 
-      // Stockage sécurisé
-      await _secureStorage.write(key: "googleUserId", value: account.id);
+      // Stockage sécurisé : non-bloquant. Un échec ici (Keychain iOS
+      // capricieux, notamment après réinstallation d'une app dont le
+      // Keychain a persisté) ne doit pas faire échouer toute la
+      // connexion, qui a déjà réussi côté Firebase à ce stade.
+      try {
+        await _secureStorage.write(key: "googleUserId", value: account.id);
+      } catch (e, st) {
+        if (kDebugMode) {
+          print("Écriture Keychain (googleUserId) échouée, ignorée : $e");
+          print(st);
+        }
+      }
 
       _setState(
         _state.copyWith(

@@ -63,6 +63,16 @@ class _DetailTournamentScreenState extends State<_DetailTournamentScreen>
       final vm = context.read<DetailTournamentViewModel>();
       vm.onIntent(ChangeTabIntent(_tabController.index));
     });
+
+    // Initialisation unique après le 1er rendu (et non à chaque build,
+    // ce qui provoquait une course avec les actions en cours : init()
+    // remettait isLoading à false pendant qu'une génération de tableau
+    // était encore en train d'écrire sur Firebase).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<DetailTournamentViewModel>().init();
+      }
+    });
   }
 
   @override
@@ -74,7 +84,6 @@ class _DetailTournamentScreenState extends State<_DetailTournamentScreen>
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<DetailTournamentViewModel>();
-    vm.init();
     final state = vm.state;
 
     // State -> tabs
